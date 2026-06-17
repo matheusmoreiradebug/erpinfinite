@@ -135,12 +135,19 @@ on conflict do nothing;
 -- ----------------------------------------------------------------------------
 -- 6. Gatilho — todo novo usuário do Auth ganha um perfil na organização
 -- ----------------------------------------------------------------------------
-create or replace function handle_new_user()
-returns trigger as $$
+-- IMPORTANTE: `set search_path = public` é obrigatório. Funções SECURITY DEFINER
+-- não herdam o search_path; sem isto o trigger não acha as tabelas e a criação
+-- de usuários no Auth falha com "Database error creating new user".
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 declare default_org uuid;
 begin
-  select id into default_org from organizations order by created_at limit 1;
-  insert into profiles (id, org_id, full_name, role)
+  select id into default_org from public.organizations order by created_at limit 1;
+  insert into public.profiles (id, org_id, full_name, role)
   values (
     new.id,
     default_org,
@@ -149,7 +156,7 @@ begin
   )
   on conflict (id) do nothing;
   return new;
-end; $$ language plpgsql security definer;
+end; $$;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
