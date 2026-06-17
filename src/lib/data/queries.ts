@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import type { DateRange } from "@/lib/date-range";
 import * as mock from "@/lib/mock-data";
 
 export type SectorDTO = {
@@ -18,8 +19,19 @@ export type EmployeeDTO = {
   ativo: boolean;
 };
 
+export type DashboardKpis = {
+  producao: number;
+  meta: number;
+  aproveitamento: number;
+  funcionariosAtivos: number;
+  setoresAtivos: number;
+  diasProduzidos: number;
+  mediaDia: number;
+  melhorDia: { data: string; valor: number } | null;
+};
+
 export type DashboardData = {
-  kpis: typeof mock.kpis;
+  kpis: DashboardKpis;
   dailyProduction: { data: string; producao: number; meta: number }[];
   sectorProduction: { setor: string; producao: number; meta: number }[];
   ranking: { nome: string; setor: string; total: number; media: number }[];
@@ -27,6 +39,23 @@ export type DashboardData = {
   insights: mock.Insight[];
   fromMock: boolean;
 };
+
+/** KPIs do mock recalculados no formato por período (modo demonstração). */
+function mockKpis(): DashboardKpis {
+  const producao = mock.dailyProduction.reduce((a, d) => a + d.producao, 0);
+  const meta = mock.dailyProduction.reduce((a, d) => a + d.meta, 0);
+  const melhor = [...mock.dailyProduction].sort((a, b) => b.producao - a.producao)[0];
+  return {
+    producao,
+    meta,
+    aproveitamento: meta ? producao / meta : 0,
+    funcionariosAtivos: mock.kpis.funcionariosAtivos,
+    setoresAtivos: mock.kpis.setoresAtivos,
+    diasProduzidos: mock.dailyProduction.length,
+    mediaDia: Math.round(producao / mock.dailyProduction.length),
+    melhorDia: melhor ? { data: melhor.data, valor: melhor.producao } : null,
+  };
+}
 
 const ddmm = (iso: string) => {
   const [, m, d] = iso.split("-");
@@ -68,10 +97,10 @@ export const getEmployees = cache(async (): Promise<EmployeeDTO[]> => {
  * Dados consolidados do dashboard. Busca a produção crua e calcula as métricas
  * em um único lugar (dataset pequeno; evita várias idas ao banco).
  */
-export const getDashboardData = cache(async (): Promise<DashboardData> => {
+export const getDashboardData = cache(async (range: DateRange): Promise<DashboardData> => {
   if (!isSupabaseConfigured) {
     return {
-      kpis: mock.kpis,
+      kpis: mockKpis(),
       dailyProduction: mock.dailyProduction,
       sectorProduction: mock.sectorProduction,
       ranking: mock.ranking,
@@ -81,11 +110,6 @@ export const getDashboardData = cache(async (): Promise<DashboardData> => {
     };
   }
 
-  // mês corrente (ISO) — filtra já no banco para não trazer histórico inteiro
-  const now = new Date();
-  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const primeiroDia = `${ym}-01`;
-
   const supabase = await createClient();
   const [sectors, employees, entriesRes, insightsRes] = await Promise.all([
     getSectors(),
@@ -93,7 +117,8 @@ export const getDashboardData = cache(async (): Promise<DashboardData> => {
     supabase
       .from("production_entries")
       .select("funcionario_id, setor_id, data, quantidade_produzida")
-      .gte("data", primeiroDia),
+      .gte("data", range.from)
+      .lte("data", range.to),
     supabase
       .from("ai_insights")
       .select("id, severidade, titulo, conteudo")
@@ -105,7 +130,8 @@ export const getDashboardData = cache(async (): Promise<DashboardData> => {
   const sectorById = new Map(sectors.map((s) => [s.id, s]));
   const empById = new Map(employees.map((e) => [e.id, e]));
 
-  const monthEntries = entries.filter((e) => e.data.startsWith(ym));
+  // já filtrado no banco pelo período
+  const monthEntries = entries;
 
   // --- produção diária (soma por dia) ---
   const byDay = new Map<string, { prod: number; metaFuncs: Set<string>; heads: Set<string> }>();
@@ -196,22 +222,24 @@ export const getDashboardData = cache(async (): Promise<DashboardData> => {
     })
     .filter((a): a is mock.Alert => a !== null);
 
-  // --- KPIs ---
+  // --- KPIs do período ---
   const dias = [...byDay.keys()].sort();
-  const ultimoDia = dias.at(-1);
-  const producaoDia = ultimoDia ? (byDay.get(ultimoDia)?.prod ?? 0) : 0;
-  const producaoMes = monthEntries.reduce((acc, e) => acc + e.quantidade_produzida, 0);
-  const ultimos7 = dias.slice(-Math.min(4, dias.length));
-  const producaoSemana = ultimos7.reduce((acc, d) => acc + (byDay.get(d)?.prod ?? 0), 0);
-  const metaMes = sectorProduction.reduce((acc, s) => acc + s.meta, 0);
+  const producao = monthEntries.reduce((acc, e) => acc + e.quantidade_produzida, 0);
+  const meta = sectorProduction.reduce((acc, s) => acc + s.meta, 0);
+  const melhor =
+    dias
+      .map((d) => ({ data: ddmm(d), valor: byDay.get(d)?.prod ?? 0 }))
+      .sort((a, b) => b.valor - a.valor)[0] ?? null;
 
-  const kpis = {
-    producaoDia,
-    producaoSemana,
-    producaoMes,
-    metaMes,
+  const kpis: DashboardKpis = {
+    producao,
+    meta,
+    aproveitamento: meta ? producao / meta : 0,
     funcionariosAtivos: empAgg.size,
     setoresAtivos: sectorAgg.size,
+    diasProduzidos: dias.length,
+    mediaDia: dias.length ? Math.round(producao / dias.length) : 0,
+    melhorDia: melhor && melhor.valor > 0 ? melhor : null,
   };
 
   const insights: mock.Insight[] =

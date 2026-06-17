@@ -1,7 +1,5 @@
 import {
   TrendingUp,
-  CalendarDays,
-  CalendarRange,
   Target,
   Percent,
   Users,
@@ -9,90 +7,104 @@ import {
   Trophy,
   Sparkles,
   AlertTriangle,
+  Gauge,
+  CalendarCheck,
+  Award,
+  Download,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { DailyProductionChart, SectorProductionChart } from "@/components/dashboard/charts";
 import { RankingList } from "@/components/dashboard/ranking-list";
 import { AlertsPanel } from "@/components/dashboard/alerts-panel";
+import { PeriodPicker } from "@/components/ui/period-picker";
 import { getDashboardData } from "@/lib/data/queries";
+import { parseRange, formatRangeLabel } from "@/lib/date-range";
 import { formatNumber, formatPercent } from "@/lib/utils";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
+  const sp = await searchParams;
+  const range = parseRange(sp);
   const { kpis, dailyProduction, sectorProduction, ranking, alerts, insights } =
-    await getDashboardData();
-  const atingido = kpis.metaMes > 0 ? kpis.producaoMes / kpis.metaMes : 0;
+    await getDashboardData(range);
+
+  const vazio = kpis.diasProduzidos === 0;
 
   return (
     <div className="animate-fade-up space-y-6">
-      <PageHeader title="Visão geral" subtitle="Produção da Infinite Móveis · junho/2026">
-        <Button variant="secondary" size="sm">
-          <CalendarRange className="size-4" />
-          Junho 2026
-        </Button>
-        <Button size="sm">
-          <TrendingUp className="size-4" />
-          Exportar
-        </Button>
+      <PageHeader title="Visão geral" subtitle={`Produção · ${formatRangeLabel(range)}`}>
+        <PeriodPicker range={range} />
+        <a href={`/api/export?type=completo&from=${range.from}&to=${range.to}`}>
+          <span className="inline-flex h-9 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-medium text-white shadow-[0_8px_24px_-8px_rgba(37,99,235,0.6)] transition-colors hover:bg-brand-2">
+            <Download className="size-4" />
+            Exportar
+          </span>
+        </a>
       </PageHeader>
+
+      {vazio && (
+        <div className="flex items-center gap-3 rounded-xl border border-line bg-panel/60 px-4 py-3 text-sm text-fg-muted">
+          <CalendarCheck className="size-4 text-fg-subtle" />
+          Nenhuma produção lançada neste período. Ajuste o filtro de data acima.
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard
-          label="Produção do dia"
-          value={formatNumber(kpis.producaoDia)}
-          icon={CalendarDays}
-          trend={{ value: "8%", up: true }}
-          hint="16/06 · 5 setores"
+          label="Produção no período"
+          value={formatNumber(kpis.producao)}
+          icon={TrendingUp}
+          hint={`Meta: ${formatNumber(kpis.meta)} peças`}
           accent
         />
         <KpiCard
-          label="Produção da semana"
-          value={formatNumber(kpis.producaoSemana)}
-          icon={CalendarRange}
-          trend={{ value: "3%", up: true }}
-          hint="Últimos 7 dias"
-        />
-        <KpiCard
-          label="Produção do mês"
-          value={formatNumber(kpis.producaoMes)}
-          icon={TrendingUp}
-          hint={`Meta: ${formatNumber(kpis.metaMes)} peças`}
-        />
-        <KpiCard
           label="Meta atingida"
-          value={formatPercent(atingido)}
+          value={formatPercent(kpis.aproveitamento)}
           icon={Percent}
-          trend={{ value: "2%", up: false }}
-          hint="Projeção: 92% no fechamento"
+          hint="Realizado ÷ meta da equipe"
         />
         <KpiCard
-          label="Meta do mês"
-          value={formatNumber(kpis.metaMes)}
+          label="Média por dia"
+          value={formatNumber(kpis.mediaDia)}
+          icon={Gauge}
+          hint={`${kpis.diasProduzidos} dia(s) com produção`}
+        />
+        <KpiCard
+          label="Melhor dia"
+          value={kpis.melhorDia ? formatNumber(kpis.melhorDia.valor) : "—"}
+          icon={Award}
+          hint={kpis.melhorDia ? `em ${kpis.melhorDia.data}` : "sem dados"}
+        />
+        <KpiCard
+          label="Meta do período"
+          value={formatNumber(kpis.meta)}
           icon={Target}
-          hint="Consolidado dos 5 setores"
+          hint="Soma das metas diárias"
         />
         <KpiCard
           label="Funcionários ativos"
           value={formatNumber(kpis.funcionariosAtivos)}
           icon={Users}
-          hint="Lançaram produção em junho"
+          hint="Produziram no período"
         />
         <KpiCard
           label="Setores ativos"
           value={formatNumber(kpis.setoresAtivos)}
           icon={Boxes}
-          hint="Acabamento, Fundo, Estante…"
+          hint="Com lançamento no período"
         />
         <KpiCard
-          label="Aproveitamento médio"
-          value={formatPercent(0.74)}
-          icon={Percent}
-          trend={{ value: "1%", up: true }}
-          hint="Média ponderada do mês"
+          label="Dias produzidos"
+          value={formatNumber(kpis.diasProduzidos)}
+          icon={CalendarCheck}
+          hint="Dias com lançamento"
         />
       </div>
 
@@ -102,11 +114,11 @@ export default async function DashboardPage() {
           <CardHeader className="flex-row items-center justify-between">
             <div>
               <CardTitle>Produção diária × meta</CardTitle>
-              <CardDescription>Evolução ao longo de junho</CardDescription>
+              <CardDescription>Evolução no período selecionado</CardDescription>
             </div>
             <Badge variant="brand">
               <span className="size-1.5 rounded-full bg-brand-3" />
-              Tempo real
+              {formatRangeLabel(range)}
             </Badge>
           </CardHeader>
           <CardContent>
@@ -117,7 +129,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Produção por setor</CardTitle>
-            <CardDescription>Realizado × meta no mês</CardDescription>
+            <CardDescription>Realizado × meta no período</CardDescription>
           </CardHeader>
           <CardContent>
             <SectorProductionChart data={sectorProduction} />
@@ -131,7 +143,7 @@ export default async function DashboardPage() {
           <CardHeader className="flex-row items-center justify-between">
             <div>
               <CardTitle>Ranking de produtividade</CardTitle>
-              <CardDescription>Top funcionários do mês</CardDescription>
+              <CardDescription>Top funcionários no período</CardDescription>
             </div>
             <Trophy className="size-4 text-amber-400" />
           </CardHeader>

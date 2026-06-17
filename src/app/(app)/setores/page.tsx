@@ -3,20 +3,28 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PeriodPicker } from "@/components/ui/period-picker";
 import { getSectors, getEmployees, getDashboardData } from "@/lib/data/queries";
+import { parseRange, formatRangeLabel } from "@/lib/date-range";
 import { cn, formatNumber, formatPercent, aproveitamentoStatus } from "@/lib/utils";
 
-export default async function SetoresPage() {
+export default async function SetoresPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
+  const range = parseRange(await searchParams);
   const [sectors, employees, dashboard] = await Promise.all([
     getSectors(),
     getEmployees(),
-    getDashboardData(),
+    getDashboardData(range),
   ]);
   const sectorProduction = dashboard.sectorProduction;
 
   return (
     <div className="animate-fade-up space-y-6">
-      <PageHeader title="Setores" subtitle={`${sectors.length} setores ativos`}>
+      <PageHeader title="Setores" subtitle={`${sectors.length} setores · ${formatRangeLabel(range)}`}>
+        <PeriodPicker range={range} />
         <Button size="sm">
           <Plus className="size-4" />
           Novo setor
