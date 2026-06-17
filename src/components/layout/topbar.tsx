@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, Search, Bell, Calendar } from "lucide-react";
+import { Menu, Search, Bell, Calendar, LogOut, ChevronDown } from "lucide-react";
 import { navItems } from "@/lib/nav";
+import type { CurrentUser } from "@/lib/data/user";
 
 function usePageTitle() {
   const pathname = usePathname();
@@ -12,7 +14,14 @@ function usePageTitle() {
   return match;
 }
 
-export function Topbar({ onOpenMobile }: { onOpenMobile: () => void }) {
+export function Topbar({
+  onOpenMobile,
+  user,
+}: {
+  onOpenMobile: () => void;
+  user: CurrentUser;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const page = usePageTitle();
   const hoje = new Intl.DateTimeFormat("pt-BR", {
     weekday: "long",
@@ -58,12 +67,41 @@ export function Topbar({ onOpenMobile }: { onOpenMobile: () => void }) {
         </button>
 
         {/* usuário */}
-        <button className="flex items-center gap-2.5 rounded-xl border border-line bg-panel py-1.5 pl-1.5 pr-3 transition-colors hover:bg-elevated">
-          <span className="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-brand to-brand-3 text-xs font-semibold text-white">
-            MM
-          </span>
-          <span className="hidden text-sm font-medium text-fg sm:block">Matheus</span>
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            className="flex items-center gap-2.5 rounded-xl border border-line bg-panel py-1.5 pl-1.5 pr-2.5 transition-colors hover:bg-elevated"
+          >
+            <span className="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-brand to-brand-3 text-xs font-semibold text-white">
+              {user.initials}
+            </span>
+            <span className="hidden text-sm font-medium text-fg sm:block">{user.name}</span>
+            <ChevronDown className="hidden size-4 text-fg-subtle sm:block" />
+          </button>
+
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 top-full z-40 mt-2 w-56 overflow-hidden rounded-xl border border-line bg-ink-2 shadow-2xl">
+                <div className="border-b border-line px-3.5 py-3">
+                  <p className="truncate text-sm font-medium text-fg">{user.name}</p>
+                  {user.email && (
+                    <p className="truncate text-xs text-fg-subtle">{user.email}</p>
+                  )}
+                </div>
+                <form action="/auth/signout" method="post">
+                  <button
+                    type="submit"
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-fg-muted transition-colors hover:bg-elevated hover:text-danger"
+                  >
+                    <LogOut className="size-4" />
+                    Sair
+                  </button>
+                </form>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

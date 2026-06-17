@@ -1,31 +1,40 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Plus, Trash2, Save, Check } from "lucide-react";
-import { sectors, employees } from "@/lib/mock-data";
+import { useMemo, useState, useTransition } from "react";
+import { Plus, Trash2, Save, Check, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatNumber, formatPercent, aproveitamentoStatus } from "@/lib/utils";
+import { saveProduction } from "@/app/(app)/producao/actions";
+import type { SectorDTO, EmployeeDTO } from "@/lib/data/queries";
 
-type Row = { key: string; nome: string; qtd: string };
+type Row = { key: string; empId?: string; nome: string; qtd: string };
 
 let counter = 0;
 const newKey = () => `row-${counter++}`;
 
-export function QuickLaunch() {
-  const [sectorId, setSectorId] = useState(sectors[0].id);
+export function QuickLaunch({
+  sectors,
+  employees,
+}: {
+  sectors: SectorDTO[];
+  employees: EmployeeDTO[];
+}) {
+  const [sectorId, setSectorId] = useState(sectors[0]?.id ?? "");
   const [data, setData] = useState("2026-06-17");
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
-  const sector = sectors.find((s) => s.id === sectorId)!;
+  const sector = sectors.find((s) => s.id === sectorId) ?? sectors[0];
 
   const initialRows = useMemo<Row[]>(
     () =>
       employees
         .filter((e) => e.setorId === sectorId)
-        .map((e) => ({ key: newKey(), nome: e.nome, qtd: "" })),
-    [sectorId],
+        .map((e) => ({ key: newKey(), empId: e.id, nome: e.nome, qtd: "" })),
+    [sectorId, employees],
   );
   const [rows, setRows] = useState<Row[]>(initialRows);
 
@@ -59,8 +68,20 @@ export function QuickLaunch() {
   }[status];
 
   const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2200);
+    setError(null);
+    startTransition(async () => {
+      const res = await saveProduction({
+        sectorId,
+        data,
+        rows: presentes.map((r) => ({ empId: r.empId, nome: r.nome, qtd: Number(r.qtd) })),
+      });
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2400);
+      } else {
+        setError(res.error ?? "Erro ao salvar.");
+      }
+    });
   };
 
   return (
@@ -119,7 +140,7 @@ export function QuickLaunch() {
                 <div key={r.key} className="grid grid-cols-[1fr_120px_40px] items-center gap-2">
                   <input
                     value={r.nome}
-                    onChange={(e) => updateRow(r.key, { nome: e.target.value })}
+                    onChange={(e) => updateRow(r.key, { nome: e.target.value, empId: undefined })}
                     placeholder="Nome do funcionário"
                     className="h-11 rounded-xl border border-line bg-panel px-3 text-sm text-fg placeholder:text-fg-subtle focus:border-brand/50 focus:outline-none focus:ring-2 focus:ring-brand/20"
                   />
@@ -215,8 +236,16 @@ export function QuickLaunch() {
             <Metric label="Média por funcionário" value={media.toFixed(1)} />
           </dl>
 
-          <Button onClick={handleSave} disabled={headcount === 0} className="mt-4 w-full">
-            {saved ? (
+          <Button
+            onClick={handleSave}
+            disabled={headcount === 0 || pending}
+            className="mt-4 w-full"
+          >
+            {pending ? (
+              <>
+                <Loader2 className="size-4 animate-spin" /> Salvando…
+              </>
+            ) : saved ? (
               <>
                 <Check className="size-4" /> Lançamento salvo
               </>
@@ -226,9 +255,13 @@ export function QuickLaunch() {
               </>
             )}
           </Button>
-          <p className="mt-2 text-center text-[11px] text-fg-subtle">
-            A meta da equipe ajusta sozinha conforme o nº de presentes.
-          </p>
+          {error ? (
+            <p className="mt-2 text-center text-[11px] text-danger">{error}</p>
+          ) : (
+            <p className="mt-2 text-center text-[11px] text-fg-subtle">
+              A meta da equipe ajusta sozinha conforme o nº de presentes.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

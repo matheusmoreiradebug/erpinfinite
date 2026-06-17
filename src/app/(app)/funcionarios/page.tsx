@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { employees, sectors } from "@/lib/mock-data";
+import { getEmployees, getSectors } from "@/lib/data/queries";
 
 function initials(nome: string) {
   return nome
@@ -14,8 +14,10 @@ function initials(nome: string) {
     .toUpperCase();
 }
 
-export default function FuncionariosPage() {
-  const sectorName = (id: string) => sectors.find((s) => s.id === id)?.nome ?? "—";
+export default async function FuncionariosPage() {
+  const [employees, sectors] = await Promise.all([getEmployees(), getSectors()]);
+  const sectorName = (id: string | null) =>
+    sectors.find((s) => s.id === id)?.nome ?? "—";
 
   return (
     <div className="animate-fade-up space-y-6">

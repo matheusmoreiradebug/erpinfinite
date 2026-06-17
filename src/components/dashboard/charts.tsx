@@ -13,8 +13,10 @@ import {
   Legend,
   Cell,
 } from "recharts";
-import { dailyProduction, sectorProduction } from "@/lib/mock-data";
 import { formatNumber } from "@/lib/utils";
+
+type DailyPoint = { data: string; producao: number; meta: number };
+type SectorPoint = { setor: string; producao: number; meta: number };
 
 const axisStyle = { fill: "#686f7b", fontSize: 12 };
 
@@ -33,10 +35,10 @@ function ChartTooltip({ active, payload, label }: any) {
   );
 }
 
-export function DailyProductionChart() {
+export function DailyProductionChart({ data }: { data: DailyPoint[] }) {
   return (
     <ResponsiveContainer width="100%" height={280}>
-      <AreaChart data={dailyProduction} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
+      <AreaChart data={data} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
         <defs>
           <linearGradient id="gProd" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#2563eb" stopOpacity={0.45} />
@@ -73,10 +75,10 @@ export function DailyProductionChart() {
   );
 }
 
-export function SectorProductionChart() {
+export function SectorProductionChart({ data }: { data: SectorPoint[] }) {
   return (
     <ResponsiveContainer width="100%" height={280}>
-      <BarChart data={sectorProduction} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
+      <BarChart data={data} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
         <CartesianGrid strokeDasharray="4 4" stroke="#23262f" vertical={false} />
         <XAxis dataKey="setor" tick={axisStyle} tickLine={false} axisLine={false} />
         <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={44} />
@@ -88,7 +90,7 @@ export function SectorProductionChart() {
         />
         <Bar dataKey="meta" name="Meta" fill="#23262f" radius={[6, 6, 0, 0]} maxBarSize={28} />
         <Bar dataKey="producao" name="Produção" radius={[6, 6, 0, 0]} maxBarSize={28}>
-          {sectorProduction.map((entry, i) => {
+          {data.map((entry, i) => {
             const pct = entry.producao / entry.meta;
             const color = pct < 0.7 ? "#ef4444" : pct < 0.9 ? "#f59e0b" : "#2563eb";
             return <Cell key={i} fill={color} />;

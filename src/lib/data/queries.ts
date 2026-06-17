@@ -1,0 +1,234 @@
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import * as mock from "@/lib/mock-data";
+
+export type SectorDTO = {
+  id: string;
+  nome: string;
+  metaIndividual: number;
+  cor: string;
+  ativo: boolean;
+};
+
+export type EmployeeDTO = {
+  id: string;
+  nome: string;
+  setorId: string | null;
+  ativo: boolean;
+};
+
+export type DashboardData = {
+  kpis: typeof mock.kpis;
+  dailyProduction: { data: string; producao: number; meta: number }[];
+  sectorProduction: { setor: string; producao: number; meta: number }[];
+  ranking: { nome: string; setor: string; total: number; media: number }[];
+  alerts: mock.Alert[];
+  insights: mock.Insight[];
+  fromMock: boolean;
+};
+
+const ddmm = (iso: string) => {
+  const [, m, d] = iso.split("-");
+  return `${d}/${m}`;
+};
+
+/** Setores ativos. */
+export async function getSectors(): Promise<SectorDTO[]> {
+  if (!isSupabaseConfigured) return mock.sectors;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("sectors")
+    .select("id, nome, meta_diaria_funcionario, cor, ativo")
+    .eq("ativo", true)
+    .order("nome");
+  if (error || !data) return mock.sectors;
+  return data.map((s) => ({
+    id: s.id,
+    nome: s.nome,
+    metaIndividual: s.meta_diaria_funcionario,
+    cor: s.cor ?? "#2563eb",
+    ativo: s.ativo,
+  }));
+}
+
+/** Funcionários. */
+export async function getEmployees(): Promise<EmployeeDTO[]> {
+  if (!isSupabaseConfigured) return mock.employees;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("employees")
+    .select("id, nome, setor_id, ativo")
+    .order("nome");
+  if (error || !data) return mock.employees;
+  return data.map((e) => ({ id: e.id, nome: e.nome, setorId: e.setor_id, ativo: e.ativo }));
+}
+
+/**
+ * Dados consolidados do dashboard. Busca a produção crua e calcula as métricas
+ * em um único lugar (dataset pequeno; evita várias idas ao banco).
+ */
+export async function getDashboardData(): Promise<DashboardData> {
+  if (!isSupabaseConfigured) {
+    return {
+      kpis: mock.kpis,
+      dailyProduction: mock.dailyProduction,
+      sectorProduction: mock.sectorProduction,
+      ranking: mock.ranking,
+      alerts: mock.alerts,
+      insights: mock.insights,
+      fromMock: true,
+    };
+  }
+
+  const supabase = await createClient();
+  const [sectors, employees, entriesRes, insightsRes] = await Promise.all([
+    getSectors(),
+    getEmployees(),
+    supabase
+      .from("production_entries")
+      .select("funcionario_id, setor_id, data, quantidade_produzida"),
+    supabase
+      .from("ai_insights")
+      .select("id, severidade, titulo, conteudo")
+      .order("created_at", { ascending: false })
+      .limit(3),
+  ]);
+
+  const entries = entriesRes.data ?? [];
+  const sectorById = new Map(sectors.map((s) => [s.id, s]));
+  const empById = new Map(employees.map((e) => [e.id, e]));
+
+  // mês corrente (ISO yyyy-mm)
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const monthEntries = entries.filter((e) => e.data.startsWith(ym));
+
+  // --- produção diária (soma por dia) ---
+  const byDay = new Map<string, { prod: number; metaFuncs: Set<string>; heads: Set<string> }>();
+  const headsBySectorDay = new Map<string, Set<string>>();
+  for (const e of monthEntries) {
+    const day = byDay.get(e.data) ?? { prod: 0, metaFuncs: new Set(), heads: new Set() };
+    day.prod += e.quantidade_produzida;
+    day.heads.add(e.funcionario_id);
+    byDay.set(e.data, day);
+    const k = `${e.data}|${e.setor_id}`;
+    const set = headsBySectorDay.get(k) ?? new Set();
+    set.add(e.funcionario_id);
+    headsBySectorDay.set(k, set);
+  }
+  const dailyProduction = [...byDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([data, v]) => {
+      // meta do dia = soma, por setor, de (headcount no setor × meta individual)
+      let meta = 0;
+      for (const [k, heads] of headsBySectorDay) {
+        if (k.startsWith(`${data}|`)) {
+          const setorId = k.split("|")[1];
+          meta += heads.size * (sectorById.get(setorId)?.metaIndividual ?? 0);
+        }
+      }
+      return { data: ddmm(data), producao: v.prod, meta };
+    });
+
+  // --- produção por setor (mês) ---
+  const sectorAgg = new Map<string, { prod: number; meta: number }>();
+  for (const [k, heads] of headsBySectorDay) {
+    const setorId = k.split("|")[1];
+    const s = sectorById.get(setorId);
+    if (!s) continue;
+    const cur = sectorAgg.get(setorId) ?? { prod: 0, meta: 0 };
+    cur.meta += heads.size * s.metaIndividual;
+    sectorAgg.set(setorId, cur);
+  }
+  for (const e of monthEntries) {
+    const cur = sectorAgg.get(e.setor_id);
+    if (cur) cur.prod += e.quantidade_produzida;
+  }
+  const sectorProduction = [...sectorAgg.entries()]
+    .map(([id, v]) => ({ setor: sectorById.get(id)?.nome ?? "—", producao: v.prod, meta: v.meta }))
+    .sort((a, b) => b.producao - a.producao);
+
+  // --- ranking de funcionários (mês) ---
+  const empAgg = new Map<string, { total: number; dias: Set<string> }>();
+  for (const e of monthEntries) {
+    const cur = empAgg.get(e.funcionario_id) ?? { total: 0, dias: new Set() };
+    cur.total += e.quantidade_produzida;
+    cur.dias.add(e.data);
+    empAgg.set(e.funcionario_id, cur);
+  }
+  const ranking = [...empAgg.entries()]
+    .map(([id, v]) => {
+      const emp = empById.get(id);
+      const setor = emp?.setorId ? (sectorById.get(emp.setorId)?.nome ?? "—") : "—";
+      return {
+        nome: emp?.nome ?? "—",
+        setor,
+        total: v.total,
+        media: v.dias.size ? Math.round((v.total / v.dias.size) * 10) / 10 : 0,
+      };
+    })
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 7);
+
+  // --- alertas (aproveitamento do setor no mês < 70% = crítico; < 85% = atenção) ---
+  const alerts: mock.Alert[] = sectorProduction
+    .map((s) => {
+      const pct = s.meta > 0 ? s.producao / s.meta : 1;
+      if (pct < 0.7)
+        return {
+          id: `al-${s.setor}`,
+          nivel: "critico" as const,
+          setor: s.setor,
+          mensagem: `Aproveitamento de ${Math.round(pct * 100)}% no mês — abaixo do limite de 70%.`,
+        };
+      if (pct < 0.85)
+        return {
+          id: `al-${s.setor}`,
+          nivel: "alerta" as const,
+          setor: s.setor,
+          mensagem: `Aproveitamento de ${Math.round(pct * 100)}% — atenção, abaixo de 85%.`,
+        };
+      return null;
+    })
+    .filter((a): a is mock.Alert => a !== null);
+
+  // --- KPIs ---
+  const dias = [...byDay.keys()].sort();
+  const ultimoDia = dias.at(-1);
+  const producaoDia = ultimoDia ? (byDay.get(ultimoDia)?.prod ?? 0) : 0;
+  const producaoMes = monthEntries.reduce((acc, e) => acc + e.quantidade_produzida, 0);
+  const ultimos7 = dias.slice(-Math.min(4, dias.length));
+  const producaoSemana = ultimos7.reduce((acc, d) => acc + (byDay.get(d)?.prod ?? 0), 0);
+  const metaMes = sectorProduction.reduce((acc, s) => acc + s.meta, 0);
+
+  const kpis = {
+    producaoDia,
+    producaoSemana,
+    producaoMes,
+    metaMes,
+    funcionariosAtivos: empAgg.size,
+    setoresAtivos: sectorAgg.size,
+  };
+
+  const insights: mock.Insight[] =
+    insightsRes.data && insightsRes.data.length
+      ? insightsRes.data.map((i) => ({
+          id: i.id,
+          severidade: (["info", "sucesso", "alerta"].includes(i.severidade)
+            ? i.severidade
+            : "info") as mock.Insight["severidade"],
+          titulo: i.titulo,
+          texto: i.conteudo,
+        }))
+      : mock.insights;
+
+  return {
+    kpis,
+    dailyProduction,
+    sectorProduction,
+    ranking,
+    alerts,
+    insights,
+    fromMock: false,
+  };
+}

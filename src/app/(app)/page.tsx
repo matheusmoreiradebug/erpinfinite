@@ -18,11 +18,13 @@ import { KpiCard } from "@/components/dashboard/kpi-card";
 import { DailyProductionChart, SectorProductionChart } from "@/components/dashboard/charts";
 import { RankingList } from "@/components/dashboard/ranking-list";
 import { AlertsPanel } from "@/components/dashboard/alerts-panel";
-import { kpis, insights } from "@/lib/mock-data";
+import { getDashboardData } from "@/lib/data/queries";
 import { formatNumber, formatPercent } from "@/lib/utils";
 
-export default function DashboardPage() {
-  const atingido = kpis.producaoMes / kpis.metaMes;
+export default async function DashboardPage() {
+  const { kpis, dailyProduction, sectorProduction, ranking, alerts, insights } =
+    await getDashboardData();
+  const atingido = kpis.metaMes > 0 ? kpis.producaoMes / kpis.metaMes : 0;
 
   return (
     <div className="animate-fade-up space-y-6">
@@ -108,7 +110,7 @@ export default function DashboardPage() {
             </Badge>
           </CardHeader>
           <CardContent>
-            <DailyProductionChart />
+            <DailyProductionChart data={dailyProduction} />
           </CardContent>
         </Card>
 
@@ -118,7 +120,7 @@ export default function DashboardPage() {
             <CardDescription>Realizado × meta no mês</CardDescription>
           </CardHeader>
           <CardContent>
-            <SectorProductionChart />
+            <SectorProductionChart data={sectorProduction} />
           </CardContent>
         </Card>
       </div>
@@ -134,7 +136,7 @@ export default function DashboardPage() {
             <Trophy className="size-4 text-amber-400" />
           </CardHeader>
           <CardContent>
-            <RankingList />
+            <RankingList ranking={ranking} />
           </CardContent>
         </Card>
 
@@ -147,7 +149,7 @@ export default function DashboardPage() {
             <AlertTriangle className="size-4 text-warning" />
           </CardHeader>
           <CardContent>
-            <AlertsPanel />
+            <AlertsPanel alerts={alerts} />
           </CardContent>
         </Card>
 

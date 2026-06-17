@@ -2,8 +2,11 @@ import { Zap } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { QuickLaunch } from "@/components/producao/quick-launch";
+import { getSectors, getEmployees } from "@/lib/data/queries";
 
-export default function ProducaoPage() {
+export default async function ProducaoPage() {
+  const [sectors, employees] = await Promise.all([getSectors(), getEmployees()]);
+
   return (
     <div className="animate-fade-up space-y-6">
       <PageHeader
@@ -16,7 +19,7 @@ export default function ProducaoPage() {
         </Badge>
       </PageHeader>
 
-      <QuickLaunch />
+      <QuickLaunch sectors={sectors} employees={employees} />
     </div>
   );
 }

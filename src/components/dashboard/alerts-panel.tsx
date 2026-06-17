@@ -1,8 +1,17 @@
-import { AlertTriangle, AlertOctagon } from "lucide-react";
-import { alerts } from "@/lib/mock-data";
+import { AlertTriangle, AlertOctagon, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function AlertsPanel() {
+type AlertItem = { id: string; nivel: "critico" | "alerta"; setor: string; mensagem: string };
+
+export function AlertsPanel({ alerts }: { alerts: AlertItem[] }) {
+  if (alerts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-success/20 bg-success/[0.05] py-8 text-center">
+        <ShieldCheck className="size-6 text-success" />
+        <p className="text-sm text-fg-muted">Nenhum alerta. Todos os setores dentro da meta.</p>
+      </div>
+    );
+  }
   return (
     <ul className="space-y-2.5">
       {alerts.map((a) => {

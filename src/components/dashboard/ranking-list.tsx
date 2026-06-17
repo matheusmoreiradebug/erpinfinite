@@ -1,11 +1,11 @@
 import { Trophy } from "lucide-react";
-import { ranking } from "@/lib/mock-data";
-import { formatNumber } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { formatNumber, cn } from "@/lib/utils";
+
+type RankItem = { nome: string; setor: string; total: number; media: number };
 
 const medalColor = ["text-amber-400", "text-zinc-300", "text-amber-700"];
 
-export function RankingList() {
+export function RankingList({ ranking }: { ranking: RankItem[] }) {
   const max = ranking[0]?.total ?? 1;
   return (
     <ul className="space-y-1">
