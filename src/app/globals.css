@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+/* ============================================================
+   INFINITE DASHBOARD — Design tokens
+   Paleta: preto, cinza chumbo, branco e azul (#2563EB)
+   ============================================================ */
+@theme {
+  /* fundos */
+  --color-ink: #08090b;          /* preto base (body) */
+  --color-ink-2: #0c0e12;        /* preto elevado */
+  --color-panel: #111318;        /* cinza chumbo (cards) */
+  --color-panel-2: #161922;      /* cinza chumbo claro */
+  --color-elevated: #1b1f29;     /* hover / inputs */
+
+  /* linhas */
+  --color-line: #23262f;
+  --color-line-2: #2c313c;
+
+  /* texto */
+  --color-fg: #f6f7f9;           /* branco */
+  --color-fg-muted: #9aa1ad;
+  --color-fg-subtle: #686f7b;
+
+  /* marca */
+  --color-brand: #2563eb;
+  --color-brand-2: #3b82f6;
+  --color-brand-3: #60a5fa;
+  --color-brand-ink: #0b1a3a;
+
+  /* status */
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+  html {
+    color-scheme: dark;
+  }
+  body {
+    background-color: var(--color-ink);
+    color: var(--color-fg);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+/* scrollbar discreta */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-line-2);
+  border-radius: 9999px;
+  border: 2px solid var(--color-ink);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a404c;
+}
+
+/* utilidades de movimento */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.animate-fade-up {
+  animation: fade-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.glow-brand {
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.18), 0 12px 40px -12px rgba(37, 99, 235, 0.45);
+}
+.grid-bg {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
