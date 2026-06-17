@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
@@ -20,7 +21,7 @@ function initialsFrom(name: string): string {
 }
 
 /** Usuário autenticado (ou um padrão de demonstração no modo mock). */
-export async function getCurrentUser(): Promise<CurrentUser> {
+export const getCurrentUser = cache(async (): Promise<CurrentUser> => {
   if (!isSupabaseConfigured) {
     return { name: "Matheus", email: "demo@infinite.com.br", initials: "MM" };
   }
@@ -32,12 +33,10 @@ export async function getCurrentUser(): Promise<CurrentUser> {
 
   if (!user) return { name: "Convidado", email: "", initials: "?" };
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user.id)
-    .single();
-
-  const name = profile?.full_name ?? user.email?.split("@")[0] ?? "Usuário";
+  // o nome já vem no token (user_metadata) — evita uma consulta extra a profiles
+  const name =
+    (user.user_metadata?.full_name as string | undefined) ??
+    user.email?.split("@")[0] ??
+    "Usuário";
   return { name, email: user.email ?? "", initials: initialsFrom(name) };
-}
+});

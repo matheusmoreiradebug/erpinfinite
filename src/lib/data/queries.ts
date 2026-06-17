@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import * as mock from "@/lib/mock-data";
@@ -32,8 +33,8 @@ const ddmm = (iso: string) => {
   return `${d}/${m}`;
 };
 
-/** Setores ativos. */
-export async function getSectors(): Promise<SectorDTO[]> {
+/** Setores ativos. Deduplicado por requisição com cache(). */
+export const getSectors = cache(async (): Promise<SectorDTO[]> => {
   if (!isSupabaseConfigured) return mock.sectors;
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -49,10 +50,10 @@ export async function getSectors(): Promise<SectorDTO[]> {
     cor: s.cor ?? "#2563eb",
     ativo: s.ativo,
   }));
-}
+});
 
-/** Funcionários. */
-export async function getEmployees(): Promise<EmployeeDTO[]> {
+/** Funcionários. Deduplicado por requisição com cache(). */
+export const getEmployees = cache(async (): Promise<EmployeeDTO[]> => {
   if (!isSupabaseConfigured) return mock.employees;
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -61,13 +62,13 @@ export async function getEmployees(): Promise<EmployeeDTO[]> {
     .order("nome");
   if (error || !data) return mock.employees;
   return data.map((e) => ({ id: e.id, nome: e.nome, setorId: e.setor_id, ativo: e.ativo }));
-}
+});
 
 /**
  * Dados consolidados do dashboard. Busca a produção crua e calcula as métricas
  * em um único lugar (dataset pequeno; evita várias idas ao banco).
  */
-export async function getDashboardData(): Promise<DashboardData> {
+export const getDashboardData = cache(async (): Promise<DashboardData> => {
   if (!isSupabaseConfigured) {
     return {
       kpis: mock.kpis,
@@ -80,13 +81,19 @@ export async function getDashboardData(): Promise<DashboardData> {
     };
   }
 
+  // mês corrente (ISO) — filtra já no banco para não trazer histórico inteiro
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const primeiroDia = `${ym}-01`;
+
   const supabase = await createClient();
   const [sectors, employees, entriesRes, insightsRes] = await Promise.all([
     getSectors(),
     getEmployees(),
     supabase
       .from("production_entries")
-      .select("funcionario_id, setor_id, data, quantidade_produzida"),
+      .select("funcionario_id, setor_id, data, quantidade_produzida")
+      .gte("data", primeiroDia),
     supabase
       .from("ai_insights")
       .select("id, severidade, titulo, conteudo")
@@ -98,9 +105,6 @@ export async function getDashboardData(): Promise<DashboardData> {
   const sectorById = new Map(sectors.map((s) => [s.id, s]));
   const empById = new Map(employees.map((e) => [e.id, e]));
 
-  // mês corrente (ISO yyyy-mm)
-  const now = new Date();
-  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const monthEntries = entries.filter((e) => e.data.startsWith(ym));
 
   // --- produção diária (soma por dia) ---
@@ -231,4 +235,4 @@ export async function getDashboardData(): Promise<DashboardData> {
     insights,
     fromMock: false,
   };
-}
+});
