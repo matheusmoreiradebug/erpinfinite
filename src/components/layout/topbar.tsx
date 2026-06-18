@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, Search, Bell, Calendar, LogOut, ChevronDown } from "lucide-react";
+import { Menu, Search, Calendar, LogOut, ChevronDown } from "lucide-react";
 import { navItems } from "@/lib/nav";
+import { NotificationsBell } from "./notifications-bell";
 import type { CurrentUser } from "@/lib/data/user";
+import type { NotificationItem } from "@/lib/data/queries";
 
 function usePageTitle() {
   const pathname = usePathname();
@@ -17,9 +19,11 @@ function usePageTitle() {
 export function Topbar({
   onOpenMobile,
   user,
+  notifications,
 }: {
   onOpenMobile: () => void;
   user: CurrentUser;
+  notifications: NotificationItem[];
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const page = usePageTitle();
@@ -61,10 +65,7 @@ export function Topbar({
         </div>
 
         {/* notificações */}
-        <button className="relative grid size-10 place-items-center rounded-xl border border-line bg-panel text-fg-muted transition-colors hover:bg-elevated hover:text-fg">
-          <Bell className="size-5" />
-          <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-danger ring-2 ring-panel" />
-        </button>
+        <NotificationsBell notifications={notifications} />
 
         {/* usuário */}
         <div className="relative">

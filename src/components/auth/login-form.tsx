@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Infinity as InfinityIcon, Mail, Lock, Loader2, ArrowRight } from "lucide-react";
+import { Mail, Lock, Loader2, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { Button } from "@/components/ui/button";
+import { BrandLogo } from "@/components/ui/brand-logo";
 
 export function LoginForm() {
   const router = useRouter();
@@ -41,9 +42,7 @@ export function LoginForm() {
     <div className="w-full max-w-sm">
       {/* marca */}
       <div className="mb-8 flex flex-col items-center text-center">
-        <div className="grid size-14 place-items-center rounded-2xl bg-brand text-white glow-brand">
-          <InfinityIcon className="size-7" strokeWidth={2.5} />
-        </div>
+        <BrandLogo size={56} className="glow-brand" />
         <h1 className="mt-4 text-xl font-semibold tracking-tight text-fg">Infinite Dashboard</h1>
         <p className="mt-1 text-sm text-fg-muted">Acesse o painel de produção</p>
       </div>

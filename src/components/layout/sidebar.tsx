@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Infinity as InfinityIcon, PanelLeftClose, PanelLeft } from "lucide-react";
+import { PanelLeftClose, PanelLeft } from "lucide-react";
 import { navItems } from "@/lib/nav";
+import { BrandLogo } from "@/components/ui/brand-logo";
 import { cn } from "@/lib/utils";
 
 type SidebarProps = {
@@ -36,9 +37,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile }: Side
       >
         {/* brand */}
         <div className="flex h-16 items-center gap-3 border-b border-line px-4">
-          <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand text-white shadow-[0_8px_24px_-8px_rgba(37,99,235,0.7)]">
-            <InfinityIcon className="size-5" strokeWidth={2.5} />
-          </div>
+          <BrandLogo size={36} />
           {!collapsed && (
             <div className="flex flex-col leading-none">
               <span className="text-sm font-semibold tracking-tight text-fg">Infinite</span>

@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import type { DateRange } from "@/lib/date-range";
+import { type DateRange, monthRange } from "@/lib/date-range";
 import * as mock from "@/lib/mock-data";
 
 export type SectorDTO = {
@@ -264,3 +264,41 @@ export const getDashboardData = cache(async (range: DateRange): Promise<Dashboar
     fromMock: false,
   };
 });
+
+export type NotificationItem = {
+  id: string;
+  nivel: "critico" | "alerta" | "info";
+  titulo: string;
+  mensagem: string;
+};
+
+/**
+ * Notificações do sino — derivadas dos dados do mês corrente:
+ * alertas de meta + um resumo da última produção registrada.
+ */
+export const getNotifications = cache(async (): Promise<NotificationItem[]> => {
+  const d = await getDashboardData(monthRange());
+
+  const notifs: NotificationItem[] = d.alerts.map((a) => ({
+    id: `alert-${a.setor}-${a.nivel}`,
+    nivel: a.nivel,
+    titulo: a.nivel === "critico" ? `Setor ${a.setor} crítico` : `Atenção: ${a.setor}`,
+    mensagem: a.mensagem,
+  }));
+
+  const ultimo = d.dailyProduction.at(-1);
+  if (ultimo) {
+    notifs.push({
+      id: `info-ultimo-${ultimo.data}`,
+      nivel: "info",
+      titulo: "Produção registrada",
+      mensagem: `Último dia (${ultimo.data}): ${formatNumberPlain(ultimo.producao)} peças lançadas.`,
+    });
+  }
+
+  return notifs;
+});
+
+function formatNumberPlain(n: number) {
+  return new Intl.NumberFormat("pt-BR").format(n);
+}
