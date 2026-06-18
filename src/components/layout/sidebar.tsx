@@ -37,7 +37,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile }: Side
       >
         {/* brand */}
         <div className="flex h-16 items-center gap-3 border-b border-line px-4">
-          <BrandLogo size={36} />
+          <BrandLogo size={40} />
           {!collapsed && (
             <div className="flex flex-col leading-none">
               <span className="text-sm font-semibold tracking-tight text-fg">Infinite</span>

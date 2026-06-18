@@ -5,9 +5,8 @@ import { Infinity as InfinityIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Logo da marca. Usa /public/logo.svg (ou .png — troque o `src`).
+ * Logo da marca. Usa public/logo.png (logo real da Infinite).
  * Se o arquivo não existir, cai num símbolo de infinito padrão.
- * Para usar o logo real: substitua public/logo.svg pelo seu arquivo.
  */
 export function BrandLogo({ size = 36, className }: { size?: number; className?: string }) {
   const [failed, setFailed] = useState(false);
@@ -29,7 +28,7 @@ export function BrandLogo({ size = 36, className }: { size?: number; className?:
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/logo.svg"
+      src="/logo.png"
       alt="Infinite"
       width={size}
       height={size}

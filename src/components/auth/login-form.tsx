@@ -42,8 +42,8 @@ export function LoginForm() {
     <div className="w-full max-w-sm">
       {/* marca */}
       <div className="mb-8 flex flex-col items-center text-center">
-        <BrandLogo size={56} className="glow-brand" />
-        <h1 className="mt-4 text-xl font-semibold tracking-tight text-fg">Infinite Dashboard</h1>
+        <BrandLogo size={84} />
+        <h1 className="mt-3 text-xl font-semibold tracking-tight text-fg">Infinite Dashboard</h1>
         <p className="mt-1 text-sm text-fg-muted">Acesse o painel de produção</p>
       </div>
 
