@@ -8,6 +8,7 @@ export type SectorDTO = {
   id: string;
   nome: string;
   metaIndividual: number;
+  metaMensal: number | null;
   cor: string;
   ativo: boolean;
 };
@@ -16,6 +17,7 @@ export type EmployeeDTO = {
   id: string;
   nome: string;
   setorId: string | null;
+  dataAdmissao: string | null;
   ativo: boolean;
 };
 
@@ -62,35 +64,69 @@ const ddmm = (iso: string) => {
   return `${d}/${m}`;
 };
 
+const toSectorDTO = (s: {
+  id: string;
+  nome: string;
+  meta_diaria_funcionario: number;
+  meta_mensal: number | null;
+  cor: string | null;
+  ativo: boolean;
+}): SectorDTO => ({
+  id: s.id,
+  nome: s.nome,
+  metaIndividual: s.meta_diaria_funcionario,
+  metaMensal: s.meta_mensal,
+  cor: s.cor ?? "#2563eb",
+  ativo: s.ativo,
+});
+
+const mockSectors = (): SectorDTO[] => mock.sectors.map((s) => ({ ...s, metaMensal: null }));
+const mockEmployees = (): EmployeeDTO[] =>
+  mock.employees.map((e) => ({ ...e, dataAdmissao: null }));
+
 /** Setores ativos. Deduplicado por requisição com cache(). */
 export const getSectors = cache(async (): Promise<SectorDTO[]> => {
-  if (!isSupabaseConfigured) return mock.sectors;
+  if (!isSupabaseConfigured) return mockSectors();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("sectors")
-    .select("id, nome, meta_diaria_funcionario, cor, ativo")
+    .select("id, nome, meta_diaria_funcionario, meta_mensal, cor, ativo")
     .eq("ativo", true)
     .order("nome");
-  if (error || !data) return mock.sectors;
-  return data.map((s) => ({
-    id: s.id,
-    nome: s.nome,
-    metaIndividual: s.meta_diaria_funcionario,
-    cor: s.cor ?? "#2563eb",
-    ativo: s.ativo,
-  }));
+  if (error || !data) return mockSectors();
+  return data.map(toSectorDTO);
 });
 
-/** Funcionários. Deduplicado por requisição com cache(). */
+/** Todos os setores (inclui inativos) — para a tela de gerenciamento. */
+export const getAllSectors = cache(async (): Promise<SectorDTO[]> => {
+  if (!isSupabaseConfigured) return mockSectors();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("sectors")
+    .select("id, nome, meta_diaria_funcionario, meta_mensal, cor, ativo")
+    .order("ativo", { ascending: false })
+    .order("nome");
+  if (error || !data) return mockSectors();
+  return data.map(toSectorDTO);
+});
+
+/** Funcionários (todos, inclui inativos). Deduplicado por requisição. */
 export const getEmployees = cache(async (): Promise<EmployeeDTO[]> => {
-  if (!isSupabaseConfigured) return mock.employees;
+  if (!isSupabaseConfigured) return mockEmployees();
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("employees")
-    .select("id, nome, setor_id, ativo")
+    .select("id, nome, setor_id, data_admissao, ativo")
+    .order("ativo", { ascending: false })
     .order("nome");
-  if (error || !data) return mock.employees;
-  return data.map((e) => ({ id: e.id, nome: e.nome, setorId: e.setor_id, ativo: e.ativo }));
+  if (error || !data) return mockEmployees();
+  return data.map((e) => ({
+    id: e.id,
+    nome: e.nome,
+    setorId: e.setor_id,
+    dataAdmissao: e.data_admissao,
+    ativo: e.ativo,
+  }));
 });
 
 /**

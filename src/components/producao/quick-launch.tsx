@@ -32,7 +32,7 @@ export function QuickLaunch({
   const initialRows = useMemo<Row[]>(
     () =>
       employees
-        .filter((e) => e.setorId === sectorId)
+        .filter((e) => e.setorId === sectorId && e.ativo)
         .map((e) => ({ key: newKey(), empId: e.id, nome: e.nome, qtd: "" })),
     [sectorId, employees],
   );
