@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { getDashboardData } from "@/lib/data/queries";
 import { parseRange, formatRangeLabel } from "@/lib/date-range";
+import { buildReportPdf } from "@/lib/pdf-report";
+
+export const runtime = "nodejs";
 
 const sep = ";";
 const line = (cols: (string | number)[]) =>
@@ -9,12 +12,25 @@ const line = (cols: (string | number)[]) =>
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const type = params.get("type") ?? "completo";
+  const format = params.get("format") ?? "csv";
   const range = parseRange({
     from: params.get("from") ?? undefined,
     to: params.get("to") ?? undefined,
   });
 
   const d = await getDashboardData(range);
+
+  // ---- PDF ----
+  if (format === "pdf") {
+    const pdf = await buildReportPdf(d, range, type);
+    const nomePdf = `infinite_${type}_${range.from}_a_${range.to}.pdf`;
+    return new Response(pdf as BodyInit, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${nomePdf}"`,
+      },
+    });
+  }
   const rows: string[] = [];
   const pct = (n: number) => `${Math.round(n * 100)}%`;
 

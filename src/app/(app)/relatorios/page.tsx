@@ -1,4 +1,4 @@
-import { FileText, Download, BarChart3, Users, Boxes, Trophy, Target } from "lucide-react";
+import { FileText, FileSpreadsheet, BarChart3, Users, Boxes, Trophy, Target } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,10 +53,10 @@ export default async function RelatoriosPage({
         subtitle={`Exportações do período · ${formatRangeLabel(range)}`}
       >
         <PeriodPicker range={range} />
-        <a href={`/api/export?type=completo&${q}`}>
+        <a href={`/api/export?type=completo&format=pdf&${q}`}>
           <span className="inline-flex h-9 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-medium text-white shadow-[0_8px_24px_-8px_rgba(37,99,235,0.6)] transition-colors hover:bg-brand-2">
-            <Download className="size-4" />
-            Relatório completo
+            <FileText className="size-4" />
+            Baixar PDF completo
           </span>
         </a>
       </PageHeader>
@@ -78,12 +78,20 @@ export default async function RelatoriosPage({
                 </div>
                 <h3 className="mt-4 font-medium text-fg">{r.titulo}</h3>
                 <p className="mt-1 flex-1 text-sm leading-relaxed text-fg-muted">{r.desc}</p>
-                <a href={`/api/export?type=${r.type}&${q}`} className="mt-4">
-                  <span className="flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-line bg-elevated text-sm font-medium text-fg transition-colors hover:bg-line-2">
-                    <Download className="size-4" />
-                    Exportar
-                  </span>
-                </a>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <a href={`/api/export?type=${r.type}&format=pdf&${q}`}>
+                    <span className="flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-brand/15 text-sm font-medium text-brand-3 transition-colors hover:bg-brand/25">
+                      <FileText className="size-4" />
+                      PDF
+                    </span>
+                  </a>
+                  <a href={`/api/export?type=${r.type}&format=csv&${q}`}>
+                    <span className="flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-line bg-elevated text-sm font-medium text-fg transition-colors hover:bg-line-2">
+                      <FileSpreadsheet className="size-4" />
+                      CSV
+                    </span>
+                  </a>
+                </div>
               </CardContent>
             </Card>
           );
