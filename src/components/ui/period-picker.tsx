@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { DayPicker, type DateRange as RdpRange } from "react-day-picker";
-import "react-day-picker/style.css";
 import { CalendarDays, ChevronDown, Check } from "lucide-react";
 import {
   type DateRange,

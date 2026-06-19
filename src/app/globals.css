@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "react-day-picker/style.css";
 
 /* ============================================================
    INFINITE DASHBOARD — Design tokens
@@ -102,16 +103,19 @@
 /* ---- calendário (react-day-picker) no tema escuro ---- */
 .rdp-root {
   --rdp-accent-color: var(--color-brand);
-  --rdp-accent-background-color: rgba(37, 99, 235, 0.18);
+  --rdp-accent-background-color: rgba(37, 99, 235, 0.16);
   --rdp-day-width: 36px;
   --rdp-day-height: 36px;
   --rdp-day_button-width: 34px;
   --rdp-day_button-height: 34px;
   --rdp-day_button-border-radius: 9px;
+  --rdp-selected-border: none;
+  --rdp-range_start-color: #ffffff;
+  --rdp-range_end-color: #ffffff;
+  --rdp-range_start-background: var(--color-brand);
+  --rdp-range_end-background: var(--color-brand);
   --rdp-range_middle-color: var(--color-fg);
-  --rdp-range_middle-background-color: rgba(37, 99, 235, 0.14);
-  --rdp-selected-border: 1px solid var(--color-brand);
-  --rdp-today-color: var(--color-brand-3);
+  --rdp-range_middle-background-color: rgba(37, 99, 235, 0.16);
   font-size: 13px;
   margin: 0;
   color: var(--color-fg);
@@ -129,9 +133,31 @@
 }
 .rdp-day_button {
   color: var(--color-fg);
+  border: none;
 }
 .rdp-day_button:hover {
   background-color: var(--color-elevated);
+}
+/* dia de hoje */
+.rdp-today:not(.rdp-selected) .rdp-day_button {
+  color: var(--color-brand-3);
+  font-weight: 600;
+}
+/* extremos do intervalo (início/fim) e dia único selecionado */
+.rdp-selected .rdp-day_button,
+.rdp-range_start .rdp-day_button,
+.rdp-range_end .rdp-day_button {
+  background-color: var(--color-brand) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+/* miolo do intervalo: faixa azul translúcida, número claro */
+.rdp-range_middle {
+  background-color: rgba(37, 99, 235, 0.16);
+}
+.rdp-range_middle .rdp-day_button {
+  background-color: transparent !important;
+  color: var(--color-fg) !important;
 }
 .rdp-outside .rdp-day_button {
   color: var(--color-fg-subtle);
