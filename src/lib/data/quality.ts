@@ -125,6 +125,82 @@ export const getReturnsList = cache(async (filters: ReturnFilters = {}): Promise
   });
 });
 
+export type EmployeePerformance = {
+  id: string;
+  nome: string;
+  setor: string;
+  producao: number;
+  dias: number;
+  media: number;
+  retornos: number; // peças retornadas
+  ocorrencias: number; // nº de devoluções
+  taxaRetorno: number; // retornos / produção
+  valorPerdido: number;
+};
+
+/** Desempenho por funcionário no período: produção × retornos. */
+export const getEmployeePerformance = cache(
+  async (range: DateRange): Promise<EmployeePerformance[]> => {
+    if (!isSupabaseConfigured) return [];
+    const supabase = await createClient();
+
+    const [prodRes, retRes, emps, secs] = await Promise.all([
+      supabase
+        .from("production_entries")
+        .select("funcionario_id, quantidade_produzida, data")
+        .gte("data", range.from)
+        .lte("data", range.to),
+      supabase
+        .from("quality_returns")
+        .select("funcionario_id, quantidade_retornada, valor_perdido")
+        .gte("data_retorno", range.from)
+        .lte("data_retorno", range.to),
+      supabase.from("employees").select("id, nome, setor_id, ativo"),
+      supabase.from("sectors").select("id, nome"),
+    ]);
+
+    const setorNome = new Map((secs.data ?? []).map((s) => [s.id, s.nome]));
+    const empById = new Map((emps.data ?? []).map((e) => [e.id, e]));
+
+    type Agg = { producao: number; dias: Set<string>; retornos: number; ocorrencias: number; valor: number };
+    const agg = new Map<string, Agg>();
+    const get = (id: string) =>
+      agg.get(id) ?? agg.set(id, { producao: 0, dias: new Set(), retornos: 0, ocorrencias: 0, valor: 0 }).get(id)!;
+
+    for (const p of prodRes.data ?? []) {
+      if (!p.funcionario_id) continue;
+      const a = get(p.funcionario_id);
+      a.producao += p.quantidade_produzida;
+      a.dias.add(p.data);
+    }
+    for (const r of retRes.data ?? []) {
+      if (!r.funcionario_id) continue;
+      const a = get(r.funcionario_id);
+      a.retornos += r.quantidade_retornada;
+      a.ocorrencias += 1;
+      a.valor += r.valor_perdido ?? 0;
+    }
+
+    return [...agg.entries()]
+      .map(([id, a]) => {
+        const emp = empById.get(id);
+        return {
+          id,
+          nome: emp?.nome ?? "—",
+          setor: emp?.setor_id ? (setorNome.get(emp.setor_id) ?? "—") : "—",
+          producao: a.producao,
+          dias: a.dias.size,
+          media: a.dias.size ? Math.round((a.producao / a.dias.size) * 10) / 10 : 0,
+          retornos: a.retornos,
+          ocorrencias: a.ocorrencias,
+          taxaRetorno: a.producao ? a.retornos / a.producao : 0,
+          valorPerdido: a.valor,
+        };
+      })
+      .sort((x, y) => y.producao - x.producao);
+  },
+);
+
 /** Gera URLs assinadas (bucket privado) para os caminhos de foto. */
 export async function signPhotos(paths: string[]): Promise<Record<string, string>> {
   if (!paths.length || !isSupabaseConfigured) return {};

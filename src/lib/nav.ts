@@ -9,6 +9,7 @@ import {
   PackageX,
   ClipboardCheck,
   History,
+  UserCog,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/supabase/types";
@@ -38,6 +39,14 @@ export const navItems: NavItem[] = [
     href: "/funcionarios",
     icon: Users,
     description: "Cadastro de pessoas",
+    roles: ["admin", "qualidade", "gestor"],
+    section: "producao",
+  },
+  {
+    label: "Desempenho",
+    href: "/desempenho",
+    icon: UserCog,
+    description: "Produção × retornos",
     roles: ["admin", "qualidade", "gestor"],
     section: "producao",
   },
