@@ -10,6 +10,8 @@ import {
   ClipboardCheck,
   History,
   UserCog,
+  CalendarCheck,
+  Tv,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/supabase/types";
@@ -106,6 +108,22 @@ export const navItems: NavItem[] = [
     icon: History,
     description: "Todos os retornos",
     roles: ["admin", "qualidade"],
+    section: "qualidade",
+  },
+  {
+    label: "Fechamento semanal",
+    href: "/fechamento",
+    icon: CalendarCheck,
+    description: "Resumo de sexta",
+    roles: ["admin", "qualidade", "gestor"],
+    section: "qualidade",
+  },
+  {
+    label: "TV da produção",
+    href: "/tv",
+    icon: Tv,
+    description: "Painel para a fábrica",
+    roles: ["admin", "qualidade", "gestor"],
     section: "qualidade",
   },
 ];

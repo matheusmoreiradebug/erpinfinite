@@ -4,7 +4,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { PeriodPicker } from "@/components/ui/period-picker";
+import { SectorFilter } from "@/components/ui/sector-filter";
 import { getEmployeePerformance } from "@/lib/data/quality";
+import { getSectors } from "@/lib/data/queries";
 import { parseRange, formatRangeLabel } from "@/lib/date-range";
 import { formatNumber, formatPercent, formatCurrency, cn } from "@/lib/utils";
 
@@ -17,10 +19,14 @@ function taxaColor(t: number) {
 export default async function DesempenhoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; setor?: string }>;
 }) {
-  const range = parseRange(await searchParams);
-  const rows = await getEmployeePerformance(range);
+  const sp = await searchParams;
+  const range = parseRange(sp);
+  const [rows, sectors] = await Promise.all([
+    getEmployeePerformance(range, sp.setor),
+    getSectors(),
+  ]);
 
   const maxProd = rows[0]?.producao ?? 1;
   const totalProd = rows.reduce((a, r) => a + r.producao, 0);
@@ -33,6 +39,7 @@ export default async function DesempenhoPage({
         title="Desempenho por funcionário"
         subtitle={`Produção × retornos · ${formatRangeLabel(range)}`}
       >
+        <SectorFilter sectors={sectors} />
         <PeriodPicker range={range} />
       </PageHeader>
 

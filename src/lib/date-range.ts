@@ -94,3 +94,35 @@ export function formatRangeLabel(range: DateRange, now = new Date()): string {
 export function rangeToQuery(range: DateRange): string {
   return `from=${range.from}&to=${range.to}`;
 }
+
+export function addDaysIso(iso: string, n: number): string {
+  const d = dateOf(iso);
+  d.setDate(d.getDate() + n);
+  return isoOf(d);
+}
+
+/** Semana útil (segunda a sexta) que contém a data informada. */
+export function businessWeek(baseIso?: string): DateRange {
+  const base = baseIso ? dateOf(baseIso) : new Date();
+  const dow = (base.getDay() + 6) % 7; // 0 = segunda
+  const seg = new Date(base);
+  seg.setDate(base.getDate() - dow);
+  const sex = new Date(seg);
+  sex.setDate(seg.getDate() + 4);
+  return { from: isoOf(seg), to: isoOf(sex) };
+}
+
+/** "16 a 20 de junho de 2026" */
+export function formatWeekLabel(range: DateRange): string {
+  const meses = [
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+  ];
+  const f = dateOf(range.from);
+  const t = dateOf(range.to);
+  const mesF = meses[f.getMonth()];
+  if (f.getMonth() === t.getMonth()) {
+    return `${f.getDate()} a ${t.getDate()} de ${mesF} de ${f.getFullYear()}`;
+  }
+  return `${f.getDate()} de ${mesF} a ${t.getDate()} de ${meses[t.getMonth()]} de ${t.getFullYear()}`;
+}

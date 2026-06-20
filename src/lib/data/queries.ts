@@ -97,6 +97,19 @@ export const getSectors = cache(async (): Promise<SectorDTO[]> => {
   return data.map(toSectorDTO);
 });
 
+/** Data (ISO) do lançamento de produção mais recente — usado na TV. */
+export const getLatestProductionDate = cache(async (): Promise<string | null> => {
+  if (!isSupabaseConfigured) return mock.dailyProduction.length ? "2026-06-16" : null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("production_entries")
+    .select("data")
+    .order("data", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.data ?? null;
+});
+
 /** Todos os setores (inclui inativos) — para a tela de gerenciamento. */
 export const getAllSectors = cache(async (): Promise<SectorDTO[]> => {
   if (!isSupabaseConfigured) return mockSectors();

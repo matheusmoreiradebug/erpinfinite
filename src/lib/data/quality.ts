@@ -140,7 +140,7 @@ export type EmployeePerformance = {
 
 /** Desempenho por funcionário no período: produção × retornos. */
 export const getEmployeePerformance = cache(
-  async (range: DateRange): Promise<EmployeePerformance[]> => {
+  async (range: DateRange, setorId?: string): Promise<EmployeePerformance[]> => {
     if (!isSupabaseConfigured) return [];
     const supabase = await createClient();
 
@@ -182,6 +182,7 @@ export const getEmployeePerformance = cache(
     }
 
     return [...agg.entries()]
+      .filter(([id]) => !setorId || empById.get(id)?.setor_id === setorId)
       .map(([id, a]) => {
         const emp = empById.get(id);
         return {
