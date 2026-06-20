@@ -128,5 +128,78 @@ export async function createReturn(formData: FormData): Promise<SaveReturnResult
   }
 
   revalidatePath("/qualidade");
+  revalidatePath("/qualidade/analise");
   return { ok: true, id: returnId };
+}
+
+export type ClassifyInput = {
+  reasonId: string;
+  observacao?: string;
+  valorPerdido?: number | null;
+};
+
+/** Jaque classifica o retorno (define motivo + status). */
+export async function classifyReturn(id: string, input: ClassifyInput): Promise<SaveReturnResult> {
+  if (!input.reasonId) return { ok: false, error: "Selecione o motivo." };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Sessão expirada." };
+
+  const { error } = await supabase
+    .from("quality_returns")
+    .update({
+      reason_id: input.reasonId,
+      observacao: input.observacao ?? null,
+      valor_perdido: input.valorPerdido ?? null,
+      status: "classificado",
+      analisado_por: user.id,
+      analisado_em: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/qualidade/analise");
+  revalidatePath("/qualidade/historico");
+  revalidatePath("/qualidade");
+  return { ok: true, id };
+}
+
+export type ReworkInput = {
+  returnId: string;
+  setorResponsavelId?: string | null;
+  funcionarioId?: string | null;
+  custoMaterial?: number;
+  custoMaoObra?: number;
+  tempoMinutos?: number;
+};
+
+/** Abre uma ordem de retrabalho ligada ao retorno. */
+export async function openRework(input: ReworkInput): Promise<SaveReturnResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Sessão expirada." };
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("org_id")
+    .eq("id", user.id)
+    .single();
+  if (!profile) return { ok: false, error: "Usuário sem organização." };
+
+  const { error } = await supabase.from("rework").insert({
+    org_id: profile.org_id,
+    return_id: input.returnId,
+    setor_responsavel_id: input.setorResponsavelId || null,
+    funcionario_id: input.funcionarioId || null,
+    custo_material: input.custoMaterial ?? 0,
+    custo_mao_obra: input.custoMaoObra ?? 0,
+    tempo_minutos: input.tempoMinutos ?? 0,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/qualidade");
+  return { ok: true };
 }

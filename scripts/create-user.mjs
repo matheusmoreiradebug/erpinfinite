@@ -18,6 +18,7 @@ const service = env.SUPABASE_SERVICE_ROLE_KEY;
 const email = process.env.NEWUSER_EMAIL;
 const password = process.env.NEWUSER_PASS;
 const fullName = process.env.NEWUSER_NAME || "Financeiro";
+const role = process.env.NEWUSER_ROLE || "admin";
 
 const admin = createClient(url, service, { auth: { persistSession: false } });
 
@@ -60,10 +61,10 @@ const { data: org } = await admin
 const { error: profErr } = await admin
   .from("profiles")
   .upsert(
-    { id: userId, org_id: org.id, full_name: fullName, role: "admin" },
+    { id: userId, org_id: org.id, full_name: fullName, role },
     { onConflict: "id" },
   );
-console.log(profErr ? "✗ Perfil: " + profErr.message : "✓ Perfil vinculado (admin) à org " + org.id);
+console.log(profErr ? "✗ Perfil: " + profErr.message : `✓ Perfil vinculado (${role}) à org ` + org.id);
 
 // 3) testar o login de verdade com a anon key
 const client = createClient(url, anon, { auth: { persistSession: false } });

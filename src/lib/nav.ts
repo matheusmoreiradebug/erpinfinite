@@ -7,6 +7,8 @@ import {
   Sparkles,
   ShieldCheck,
   PackageX,
+  ClipboardCheck,
+  History,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/supabase/types";
@@ -79,6 +81,22 @@ export const navItems: NavItem[] = [
     icon: PackageX,
     description: "Entrada de avarias",
     roles: ["admin", "qualidade", "almoxarifado"],
+    section: "qualidade",
+  },
+  {
+    label: "Análise",
+    href: "/qualidade/analise",
+    icon: ClipboardCheck,
+    description: "Classificar retornos",
+    roles: ["admin", "qualidade"],
+    section: "qualidade",
+  },
+  {
+    label: "Histórico",
+    href: "/qualidade/historico",
+    icon: History,
+    description: "Todos os retornos",
+    roles: ["admin", "qualidade"],
     section: "qualidade",
   },
 ];

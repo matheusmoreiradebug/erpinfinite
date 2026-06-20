@@ -1,7 +1,141 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { DateRange } from "@/lib/date-range";
+
+export type ReturnStatus = "registrado" | "em_analise" | "classificado" | "resolvido";
+
+export type ReturnRow = {
+  id: string;
+  data: string;
+  hora: string | null;
+  pedido: string | null;
+  quantidade: number;
+  status: ReturnStatus;
+  truck: string;
+  client: string;
+  setorId: string | null;
+  setor: string;
+  funcionarioId: string | null;
+  funcionario: string;
+  product: string;
+  motivoInicial: string | null;
+  observacao: string | null;
+  categoria: string | null;
+  motivo: string | null;
+  valorPerdido: number | null;
+  fotosPaths: string[];
+};
+
+export type ReturnFilters = {
+  range?: DateRange;
+  status?: ReturnStatus[];
+  setorId?: string;
+  funcionarioId?: string;
+  truckId?: string;
+  clientId?: string;
+  categoryId?: string;
+};
+
+export const getReturnsList = cache(async (filters: ReturnFilters = {}): Promise<ReturnRow[]> => {
+  if (!isSupabaseConfigured) return [];
+  const supabase = await createClient();
+
+  let q = supabase
+    .from("quality_returns")
+    .select(
+      "id, data_retorno, hora_retorno, pedido, quantidade_retornada, status, truck_id, client_id, setor_origem_id, funcionario_id, product_id, motivo_inicial, observacao, reason_id, valor_perdido",
+    )
+    .order("data_retorno", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (filters.range) q = q.gte("data_retorno", filters.range.from).lte("data_retorno", filters.range.to);
+  if (filters.status?.length) q = q.in("status", filters.status);
+  if (filters.setorId) q = q.eq("setor_origem_id", filters.setorId);
+  if (filters.funcionarioId) q = q.eq("funcionario_id", filters.funcionarioId);
+  if (filters.truckId) q = q.eq("truck_id", filters.truckId);
+  if (filters.clientId) q = q.eq("client_id", filters.clientId);
+
+  const [retRes, trucks, clients, prods, secs, emps, reasons, cats] = await Promise.all([
+    q.limit(500),
+    supabase.from("trucks").select("id, identificador"),
+    supabase.from("clients").select("id, nome"),
+    supabase.from("products").select("id, nome"),
+    supabase.from("sectors").select("id, nome"),
+    supabase.from("employees").select("id, nome"),
+    supabase.from("return_reasons").select("id, nome, category_id"),
+    supabase.from("return_categories").select("id, nome"),
+  ]);
+
+  let rows = retRes.data ?? [];
+  const truckNome = new Map((trucks.data ?? []).map((t) => [t.id, t.identificador]));
+  const clientNome = new Map((clients.data ?? []).map((c) => [c.id, c.nome]));
+  const prodNome = new Map((prods.data ?? []).map((p) => [p.id, p.nome]));
+  const setorNome = new Map((secs.data ?? []).map((s) => [s.id, s.nome]));
+  const funcNome = new Map((emps.data ?? []).map((e) => [e.id, e.nome]));
+  const reasonInfo = new Map((reasons.data ?? []).map((r) => [r.id, r]));
+  const catNome = new Map((cats.data ?? []).map((c) => [c.id, c.nome]));
+
+  if (filters.categoryId) {
+    rows = rows.filter((r) => {
+      const cat = r.reason_id ? reasonInfo.get(r.reason_id)?.category_id : null;
+      return cat === filters.categoryId;
+    });
+  }
+
+  // fotos das devoluções listadas
+  const ids = rows.map((r) => r.id);
+  const fotosByReturn = new Map<string, string[]>();
+  if (ids.length) {
+    const { data: ph } = await supabase
+      .from("return_photos")
+      .select("return_id, storage_path")
+      .in("return_id", ids);
+    for (const p of ph ?? []) {
+      const arr = fotosByReturn.get(p.return_id) ?? [];
+      arr.push(p.storage_path);
+      fotosByReturn.set(p.return_id, arr);
+    }
+  }
+
+  return rows.map((r) => {
+    const reason = r.reason_id ? reasonInfo.get(r.reason_id) : null;
+    return {
+      id: r.id,
+      data: r.data_retorno,
+      hora: r.hora_retorno,
+      pedido: r.pedido,
+      quantidade: r.quantidade_retornada,
+      status: r.status as ReturnStatus,
+      truck: r.truck_id ? (truckNome.get(r.truck_id) ?? "—") : "—",
+      client: r.client_id ? (clientNome.get(r.client_id) ?? "—") : "—",
+      setorId: r.setor_origem_id,
+      setor: r.setor_origem_id ? (setorNome.get(r.setor_origem_id) ?? "—") : "—",
+      funcionarioId: r.funcionario_id,
+      funcionario: r.funcionario_id ? (funcNome.get(r.funcionario_id) ?? "—") : "—",
+      product: r.product_id ? (prodNome.get(r.product_id) ?? "—") : "—",
+      motivoInicial: r.motivo_inicial,
+      observacao: r.observacao,
+      categoria: reason ? (catNome.get(reason.category_id) ?? null) : null,
+      motivo: reason?.nome ?? null,
+      valorPerdido: r.valor_perdido,
+      fotosPaths: fotosByReturn.get(r.id) ?? [],
+    };
+  });
+});
+
+/** Gera URLs assinadas (bucket privado) para os caminhos de foto. */
+export async function signPhotos(paths: string[]): Promise<Record<string, string>> {
+  if (!paths.length || !isSupabaseConfigured) return {};
+  const admin = createAdminClient();
+  const { data } = await admin.storage.from("avarias").createSignedUrls(paths, 3600);
+  const map: Record<string, string> = {};
+  for (const item of data ?? []) {
+    if (item.signedUrl && item.path) map[item.path] = item.signedUrl;
+  }
+  return map;
+}
 
 export type NamedItem = { id: string; nome: string };
 export type ReasonItem = { id: string; nome: string; categoryId: string };
