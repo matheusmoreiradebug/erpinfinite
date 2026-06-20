@@ -9,6 +9,14 @@ export function formatNumber(n: number): string {
   return new Intl.NumberFormat("pt-BR").format(n);
 }
 
+export function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 export function formatPercent(value: number, fractionDigits = 0): string {
   return new Intl.NumberFormat("pt-BR", {
     style: "percent",

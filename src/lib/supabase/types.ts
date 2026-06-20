@@ -4,7 +4,15 @@
  *   npx supabase gen types typescript --project-id <id> > src/lib/supabase/types.ts
  */
 
-export type UserRole = "admin" | "gestor" | "operador" | "viewer";
+export type UserRole =
+  | "admin"
+  | "gestor"
+  | "operador"
+  | "viewer"
+  | "qualidade"
+  | "almoxarifado";
+
+export type Json = string | number | boolean | null | { [k: string]: Json } | Json[];
 
 export type Database = {
   public: {
@@ -150,6 +158,98 @@ export type Database = {
         Update: Partial<{ severidade: string; titulo: string; conteudo: string }>;
         Relationships: [];
       };
+      clients: {
+        Row: { id: string; org_id: string; nome: string; cidade: string | null; ativo: boolean; created_at: string; updated_at: string };
+        Insert: { id?: string; org_id: string; nome: string; cidade?: string | null; ativo?: boolean };
+        Update: Partial<{ nome: string; cidade: string | null; ativo: boolean }>;
+        Relationships: [];
+      };
+      trucks: {
+        Row: { id: string; org_id: string; identificador: string; placa: string | null; motorista: string | null; ativo: boolean; created_at: string; updated_at: string };
+        Insert: { id?: string; org_id: string; identificador: string; placa?: string | null; motorista?: string | null; ativo?: boolean };
+        Update: Partial<{ identificador: string; placa: string | null; motorista: string | null; ativo: boolean }>;
+        Relationships: [];
+      };
+      products: {
+        Row: { id: string; org_id: string; nome: string; sku: string | null; custo_unitario: number | null; ativo: boolean; created_at: string; updated_at: string };
+        Insert: { id?: string; org_id: string; nome: string; sku?: string | null; custo_unitario?: number | null; ativo?: boolean };
+        Update: Partial<{ nome: string; sku: string | null; custo_unitario: number | null; ativo: boolean }>;
+        Relationships: [];
+      };
+      return_categories: {
+        Row: { id: string; org_id: string; nome: string; slug: string; cor: string | null; ordem: number | null; ativo: boolean; created_at: string };
+        Insert: { id?: string; org_id: string; nome: string; slug: string; cor?: string | null; ordem?: number | null; ativo?: boolean };
+        Update: Partial<{ nome: string; cor: string | null; ordem: number | null; ativo: boolean }>;
+        Relationships: [];
+      };
+      return_reasons: {
+        Row: { id: string; org_id: string; category_id: string; nome: string; ordem: number | null; ativo: boolean; created_at: string };
+        Insert: { id?: string; org_id: string; category_id: string; nome: string; ordem?: number | null; ativo?: boolean };
+        Update: Partial<{ category_id: string; nome: string; ordem: number | null; ativo: boolean }>;
+        Relationships: [];
+      };
+      deliveries: {
+        Row: { id: string; org_id: string; pedido: string | null; data: string; truck_id: string | null; client_id: string | null; quantidade: number | null; created_at: string };
+        Insert: { id?: string; org_id: string; pedido?: string | null; data: string; truck_id?: string | null; client_id?: string | null; quantidade?: number | null };
+        Update: Partial<{ pedido: string | null; data: string; truck_id: string | null; client_id: string | null; quantidade: number | null }>;
+        Relationships: [];
+      };
+      quality_returns: {
+        Row: {
+          id: string; org_id: string; pedido: string | null; data_retorno: string; hora_retorno: string | null;
+          truck_id: string | null; client_id: string | null; setor_origem_id: string | null; funcionario_id: string | null;
+          product_id: string | null; quantidade_retornada: number; motivo_inicial: string | null; reason_id: string | null;
+          observacao: string | null; valor_perdido: number | null; status: "registrado" | "em_analise" | "classificado" | "resolvido";
+          registrado_por: string | null; analisado_por: string | null; analisado_em: string | null; created_at: string; updated_at: string;
+        };
+        Insert: {
+          id?: string; org_id: string; pedido?: string | null; data_retorno: string; hora_retorno?: string | null;
+          truck_id?: string | null; client_id?: string | null; setor_origem_id?: string | null; funcionario_id?: string | null;
+          product_id?: string | null; quantidade_retornada: number; motivo_inicial?: string | null; reason_id?: string | null;
+          observacao?: string | null; valor_perdido?: number | null; status?: "registrado" | "em_analise" | "classificado" | "resolvido";
+          registrado_por?: string | null;
+        };
+        Update: Partial<{
+          reason_id: string | null; observacao: string | null; valor_perdido: number | null;
+          status: "registrado" | "em_analise" | "classificado" | "resolvido"; analisado_por: string | null; analisado_em: string | null;
+        }>;
+        Relationships: [];
+      };
+      return_photos: {
+        Row: { id: string; org_id: string; return_id: string; storage_path: string; created_at: string };
+        Insert: { id?: string; org_id: string; return_id: string; storage_path: string };
+        Update: Partial<{ storage_path: string }>;
+        Relationships: [];
+      };
+      rework: {
+        Row: {
+          id: string; org_id: string; return_id: string; setor_responsavel_id: string | null; funcionario_id: string | null;
+          custo_material: number | null; custo_mao_obra: number | null; tempo_minutos: number | null;
+          status: "pendente" | "em_andamento" | "concluido"; observacao: string | null; concluido_em: string | null; created_at: string; updated_at: string;
+        };
+        Insert: {
+          id?: string; org_id: string; return_id: string; setor_responsavel_id?: string | null; funcionario_id?: string | null;
+          custo_material?: number | null; custo_mao_obra?: number | null; tempo_minutos?: number | null;
+          status?: "pendente" | "em_andamento" | "concluido"; observacao?: string | null;
+        };
+        Update: Partial<{
+          setor_responsavel_id: string | null; funcionario_id: string | null; custo_material: number | null;
+          custo_mao_obra: number | null; tempo_minutos: number | null; status: "pendente" | "em_andamento" | "concluido"; observacao: string | null; concluido_em: string | null;
+        }>;
+        Relationships: [];
+      };
+      weekly_closings: {
+        Row: { id: string; org_id: string; semana_inicio: string; semana_fim: string; resumo: Json; analise_ia: string | null; gerado_em: string };
+        Insert: { id?: string; org_id: string; semana_inicio: string; semana_fim: string; resumo: Json; analise_ia?: string | null };
+        Update: Partial<{ resumo: Json; analise_ia: string | null }>;
+        Relationships: [];
+      };
+      audit_logs: {
+        Row: { id: string; org_id: string; user_id: string | null; acao: string; entidade: string; entidade_id: string | null; dados: Json | null; created_at: string };
+        Insert: { id?: string; org_id: string; user_id?: string | null; acao: string; entidade: string; entidade_id?: string | null; dados?: Json | null };
+        Update: Partial<{ acao: string }>;
+        Relationships: [];
+      };
     };
     Views: {
       v_producao_setor_dia: {
@@ -185,6 +285,26 @@ export type Database = {
           funcionarios_ativos_dia: number;
           setores_ativos_dia: number;
         };
+        Relationships: [];
+      };
+      v_qualidade_por_setor: {
+        Row: { org_id: string; setor_id: string; setor_nome: string; producao_total: number; pecas_retornadas: number; taxa_retorno: number | null };
+        Relationships: [];
+      };
+      v_qualidade_por_funcionario: {
+        Row: { org_id: string; funcionario_id: string; funcionario_nome: string; producao_total: number; pecas_retornadas: number; taxa_erro: number | null };
+        Relationships: [];
+      };
+      v_qualidade_por_caminhao: {
+        Row: { org_id: string; truck_id: string; identificador: string; entregas: number; retornos: number; taxa_problemas: number | null };
+        Relationships: [];
+      };
+      v_qualidade_por_categoria: {
+        Row: { org_id: string; categoria_id: string; categoria: string; data_retorno: string; ocorrencias: number; pecas: number };
+        Relationships: [];
+      };
+      v_retrabalho_custo: {
+        Row: { org_id: string; mes: string; ordens: number; custo_total: number | null; tempo_total_min: number | null };
         Relationships: [];
       };
     };

@@ -26,6 +26,7 @@ export function AppShell({
         onToggle={() => setCollapsed((c) => !c)}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
+        role={user.role}
       />
 
       <div
