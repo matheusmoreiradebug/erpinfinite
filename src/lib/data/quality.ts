@@ -256,6 +256,35 @@ export const getQualityCatalogs = cache(async (): Promise<QualityCatalogs> => {
   };
 });
 
+export type ManageCatalogs = {
+  trucks: { id: string; identificador: string; placa: string | null; motorista: string | null; ativo: boolean }[];
+  clients: { id: string; nome: string; cidade: string | null; ativo: boolean }[];
+  products: { id: string; nome: string; sku: string | null; custo_unitario: number | null; ativo: boolean }[];
+  categories: { id: string; nome: string; cor: string | null; ativo: boolean }[];
+  reasons: { id: string; nome: string; category_id: string; ativo: boolean }[];
+};
+
+/** Todos os cadastros (inclui inativos) — para as telas de gerenciamento. */
+export const getCatalogsForManage = cache(async (): Promise<ManageCatalogs> => {
+  const vazio: ManageCatalogs = { trucks: [], clients: [], products: [], categories: [], reasons: [] };
+  if (!isSupabaseConfigured) return vazio;
+  const supabase = await createClient();
+  const [tk, cl, pr, cat, rs] = await Promise.all([
+    supabase.from("trucks").select("id, identificador, placa, motorista, ativo").order("ativo", { ascending: false }).order("identificador"),
+    supabase.from("clients").select("id, nome, cidade, ativo").order("ativo", { ascending: false }).order("nome"),
+    supabase.from("products").select("id, nome, sku, custo_unitario, ativo").order("ativo", { ascending: false }).order("nome"),
+    supabase.from("return_categories").select("id, nome, cor, ativo").order("ordem"),
+    supabase.from("return_reasons").select("id, nome, category_id, ativo").order("ordem"),
+  ]);
+  return {
+    trucks: tk.data ?? [],
+    clients: cl.data ?? [],
+    products: pr.data ?? [],
+    categories: cat.data ?? [],
+    reasons: rs.data ?? [],
+  };
+});
+
 export type QualityDashboard = {
   retornos: number; // nº de ocorrências
   pecas: number; // soma quantidade
