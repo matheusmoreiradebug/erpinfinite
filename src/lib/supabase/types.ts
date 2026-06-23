@@ -250,6 +250,12 @@ export type Database = {
         Update: Partial<{ acao: string }>;
         Relationships: [];
       };
+      loading_entries: {
+        Row: { id: string; org_id: string; data: string; linha: string; caminhao: number; cor: "branco" | "preto"; movel: string; quantidade: number; created_by: string | null; created_at: string; updated_at: string };
+        Insert: { id?: string; org_id: string; data: string; linha: string; caminhao: number; cor: "branco" | "preto"; movel: string; quantidade: number; created_by?: string | null };
+        Update: Partial<{ data: string; linha: string; caminhao: number; cor: "branco" | "preto"; movel: string; quantidade: number }>;
+        Relationships: [];
+      };
     };
     Views: {
       v_producao_setor_dia: {

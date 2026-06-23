@@ -19,6 +19,7 @@ type SidebarProps = {
 const sectionLabel: Record<string, string> = {
   producao: "Produção",
   qualidade: "Qualidade",
+  logistica: "Logística",
 };
 
 export function Sidebar({ collapsed, onToggle, mobileOpen, onCloseMobile, role }: SidebarProps) {

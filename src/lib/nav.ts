@@ -23,7 +23,7 @@ export type NavItem = {
   icon: LucideIcon;
   description: string;
   roles?: UserRole[]; // ausente = todos os cargos; admin sempre vê tudo
-  section?: "producao" | "qualidade";
+  section?: "producao" | "qualidade" | "logistica";
 };
 
 export const navItems: NavItem[] = [
@@ -134,6 +134,24 @@ export const navItems: NavItem[] = [
     description: "Caminhões, clientes, motivos",
     roles: ["admin", "qualidade"],
     section: "qualidade",
+  },
+
+  // ---- Logística ----
+  {
+    label: "Lista de produção",
+    href: "/logistica",
+    icon: ClipboardList,
+    description: "Carregamento diário",
+    roles: ["admin", "almoxarifado"],
+    section: "logistica",
+  },
+  {
+    label: "Relatório semanal",
+    href: "/logistica/relatorio",
+    icon: FileBarChart,
+    description: "Conferência da semana",
+    roles: ["admin", "qualidade", "gestor", "almoxarifado"],
+    section: "logistica",
   },
 ];
 
