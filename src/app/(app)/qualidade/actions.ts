@@ -132,6 +132,22 @@ export async function createReturn(formData: FormData): Promise<SaveReturnResult
   return { ok: true, id: returnId };
 }
 
+/** URLs assinadas das fotos de um retorno (checa RLS antes de assinar). */
+export async function getReturnPhotos(returnId: string): Promise<string[]> {
+  const supabase = await createClient();
+  // o select passa pela RLS — só retorna se o usuário pode ver este retorno
+  const { data } = await supabase
+    .from("return_photos")
+    .select("storage_path")
+    .eq("return_id", returnId);
+  const paths = (data ?? []).map((p) => p.storage_path);
+  if (!paths.length) return [];
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const admin = createAdminClient();
+  const { data: signed } = await admin.storage.from("avarias").createSignedUrls(paths, 3600);
+  return (signed ?? []).map((s) => s.signedUrl).filter((u): u is string => !!u);
+}
+
 export type ClassifyInput = {
   reasonId: string;
   observacao?: string;

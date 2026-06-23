@@ -236,3 +236,84 @@ export async function buildReportPdf(
 
   return doc.save();
 }
+
+// ============================================================================
+// Relatório de QUALIDADE
+// ============================================================================
+export type QualityReportData = {
+  retornos: number;
+  pecas: number;
+  producao: number;
+  percentRetorno: number;
+  valorPerdido: number;
+  porCategoria: { categoria: string; ocorrencias: number }[];
+  porCaminhao: { nome: string; entregas: number; retornos: number; taxa: number }[];
+  porFuncionario: { nome: string; producao: number; retornos: number; taxa: number }[];
+  porSetor: { nome: string; producao: number; retornos: number; taxa: number }[];
+};
+
+export async function buildQualityReportPdf(
+  data: QualityReportData,
+  range: DateRange,
+): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const ctx: Ctx = { doc, page: doc.addPage([A4.w, A4.h]), y: A4.h - M, font, bold };
+
+  // cabeçalho
+  ctx.page.drawRectangle({ x: 0, y: A4.h - 70, width: A4.w, height: 70, color: BRAND });
+  ctx.page.drawText("Infinite Moveis", { x: M, y: A4.h - 38, size: 18, font: bold, color: WHITE });
+  ctx.page.drawText("Relatorio de Qualidade", { x: M, y: A4.h - 56, size: 10, font, color: WHITE });
+  const periodo = clean(formatRangeLabel(range));
+  ctx.page.drawText(periodo, { x: A4.w - M - bold.widthOfTextAtSize(periodo, 11), y: A4.h - 42, size: 11, font: bold, color: WHITE });
+  ctx.y = A4.h - 96;
+
+  // resumo
+  const resumo: [string, string][] = [
+    ["Retornos no periodo", String(data.retornos)],
+    ["Pecas retornadas", String(data.pecas)],
+    ["% sobre producao", pct(data.percentRetorno)],
+    ["Valor perdido (R$)", data.valorPerdido.toFixed(2)],
+    ["Producao", String(data.producao)],
+    ["Categorias afetadas", String(data.porCategoria.length)],
+  ];
+  text(ctx, "Resumo geral", M, 11, { bold: true, color: BRAND });
+  ctx.y -= 18;
+  const colW = (A4.w - M * 2) / 3;
+  resumo.forEach(([label, val], i) => {
+    const col = i % 3;
+    const rowIx = Math.floor(i / 3);
+    const bx = M + col * colW;
+    const by = ctx.y - rowIx * 40;
+    ctx.page.drawRectangle({ x: bx, y: by - 26, width: colW - 10, height: 34, color: ZEBRA, borderColor: LINE, borderWidth: 0.5 });
+    ctx.page.drawText(clean(label), { x: bx + 8, y: by - 6, size: 7.5, font, color: MUTED });
+    ctx.page.drawText(clean(val), { x: bx + 8, y: by - 20, size: 13, font: bold, color: INK });
+  });
+  ctx.y -= 40 * Math.ceil(resumo.length / 3) + 8;
+
+  drawTable(ctx, "Problemas por categoria",
+    [{ header: "Categoria", key: "cat", w: 360 }, { header: "Ocorrencias", key: "qtd", w: 151, align: "right" }],
+    data.porCategoria.map((c) => ({ cat: c.categoria, qtd: c.ocorrencias })));
+
+  drawTable(ctx, "Por caminhao",
+    [{ header: "Caminhao", key: "nome", w: 230 }, { header: "Entregas", key: "e", w: 90, align: "right" }, { header: "Retornos", key: "r", w: 90, align: "right" }, { header: "Taxa", key: "t", w: 101, align: "right" }],
+    data.porCaminhao.map((c) => ({ nome: c.nome, e: c.entregas, r: c.retornos, t: c.entregas ? pct(c.taxa) : "-" })));
+
+  drawTable(ctx, "Por funcionario (taxa de erro)",
+    [{ header: "Funcionario", key: "nome", w: 260 }, { header: "Producao", key: "p", w: 80, align: "right" }, { header: "Retornos", key: "r", w: 80, align: "right" }, { header: "Taxa", key: "t", w: 91, align: "right" }],
+    data.porFuncionario.map((f) => ({ nome: f.nome, p: f.producao, r: f.retornos, t: f.producao ? pct(f.taxa) : "-" })));
+
+  drawTable(ctx, "Por setor",
+    [{ header: "Setor", key: "nome", w: 260 }, { header: "Producao", key: "p", w: 80, align: "right" }, { header: "Retornos", key: "r", w: 80, align: "right" }, { header: "Taxa", key: "t", w: 91, align: "right" }],
+    data.porSetor.map((s) => ({ nome: s.nome, p: s.producao, r: s.retornos, t: s.producao ? pct(s.taxa) : "-" })));
+
+  const pages = doc.getPages();
+  pages.forEach((p, i) => {
+    p.drawText(clean(`Infinite Dashboard  -  Qualidade  -  gerado em ${new Date().toLocaleDateString("pt-BR")}`), { x: M, y: 24, size: 7.5, font, color: MUTED });
+    const pg = `${i + 1}/${pages.length}`;
+    p.drawText(pg, { x: A4.w - M - font.widthOfTextAtSize(pg, 7.5), y: 24, size: 7.5, font, color: MUTED });
+  });
+
+  return doc.save();
+}

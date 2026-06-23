@@ -1,4 +1,4 @@
-import { PackageX, Percent, Boxes, DollarSign, Truck, Users, ShieldAlert } from "lucide-react";
+import { PackageX, Percent, Boxes, DollarSign, Truck, Users, ShieldAlert, FileText, FileSpreadsheet } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,18 @@ export default async function QualidadePage({
     <div className="animate-fade-up space-y-6">
       <PageHeader title="Qualidade" subtitle={`Retornos e avarias · ${formatRangeLabel(range)}`}>
         <PeriodPicker range={range} />
+        <a href={`/api/export?type=qualidade&format=csv&from=${range.from}&to=${range.to}`}>
+          <span className="inline-flex h-9 items-center gap-2 rounded-xl border border-line bg-elevated px-3 text-sm font-medium text-fg transition-colors hover:bg-line-2">
+            <FileSpreadsheet className="size-4" />
+            CSV
+          </span>
+        </a>
+        <a href={`/api/export?type=qualidade&format=pdf&from=${range.from}&to=${range.to}`}>
+          <span className="inline-flex h-9 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-medium text-white shadow-[0_8px_24px_-8px_rgba(37,99,235,0.6)] transition-colors hover:bg-brand-2">
+            <FileText className="size-4" />
+            PDF
+          </span>
+        </a>
       </PageHeader>
 
       {d.semVazio && (

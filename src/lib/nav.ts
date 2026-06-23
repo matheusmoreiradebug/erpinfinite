@@ -107,8 +107,8 @@ export const navItems: NavItem[] = [
     label: "Histórico",
     href: "/qualidade/historico",
     icon: History,
-    description: "Todos os retornos",
-    roles: ["admin", "qualidade"],
+    description: "Retornos registrados",
+    roles: ["admin", "qualidade", "almoxarifado"],
     section: "qualidade",
   },
   {

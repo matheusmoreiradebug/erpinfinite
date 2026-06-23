@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { UserRole } from "@/lib/supabase/types";
 
 export type CurrentUser = {
+  id: string | null;
   name: string;
   email: string;
   initials: string;
@@ -26,7 +27,7 @@ function initialsFrom(name: string): string {
 /** Usuário autenticado (ou um padrão de demonstração no modo mock). */
 export const getCurrentUser = cache(async (): Promise<CurrentUser> => {
   if (!isSupabaseConfigured) {
-    return { name: "Matheus", email: "demo@infinite.com.br", initials: "MM", role: "admin" };
+    return { id: null, name: "Matheus", email: "demo@infinite.com.br", initials: "MM", role: "admin" };
   }
 
   const supabase = await createClient();
@@ -34,7 +35,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser> => {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return { name: "Convidado", email: "", initials: "?", role: "viewer" };
+  if (!user) return { id: null, name: "Convidado", email: "", initials: "?", role: "viewer" };
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -48,6 +49,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser> => {
     user.email?.split("@")[0] ??
     "Usuário";
   return {
+    id: user.id,
     name,
     email: user.email ?? "",
     initials: initialsFrom(name),

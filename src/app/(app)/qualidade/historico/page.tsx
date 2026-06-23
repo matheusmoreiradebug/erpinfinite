@@ -1,18 +1,13 @@
 import { PageHeader } from "@/components/ui/page-header";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { PeriodPicker } from "@/components/ui/period-picker";
 import { HistoryFilters } from "@/components/qualidade/history-filters";
-import { getReturnsList, getQualityCatalogs, type ReturnFilters, type ReturnStatus } from "@/lib/data/quality";
+import { ReturnsTable } from "@/components/qualidade/returns-table";
+import { ScopeToggle } from "@/components/qualidade/scope-toggle";
+import {
+  getReturnsList, getQualityCatalogs, type ReturnFilters, type ReturnStatus,
+} from "@/lib/data/quality";
+import { getCurrentUser } from "@/lib/data/user";
 import { parseRange, formatRangeLabel } from "@/lib/date-range";
-import { formatNumber, formatCurrency } from "@/lib/utils";
-
-const statusVariant = {
-  registrado: "warning",
-  em_analise: "warning",
-  classificado: "brand",
-  resolvido: "success",
-} as const;
 
 export default async function HistoricoPage({
   searchParams,
@@ -21,6 +16,15 @@ export default async function HistoricoPage({
 }) {
   const sp = await searchParams;
   const range = parseRange(sp);
+  const user = await getCurrentUser();
+
+  // almoxarifado vê os "meus" por padrão; gestão vê "todos"
+  const escopo: "meus" | "todos" =
+    sp.escopo === "todos" || sp.escopo === "meus"
+      ? sp.escopo
+      : user.role === "almoxarifado"
+        ? "meus"
+        : "todos";
 
   const filters: ReturnFilters = {
     range,
@@ -29,74 +33,24 @@ export default async function HistoricoPage({
     funcionarioId: sp.funcionario,
     truckId: sp.caminhao,
     categoryId: sp.categoria,
+    registradoPor: escopo === "meus" && user.id ? user.id : undefined,
   };
 
   const [rows, catalogs] = await Promise.all([getReturnsList(filters), getQualityCatalogs()]);
 
   return (
     <div className="animate-fade-up space-y-6">
-      <PageHeader title="Histórico de retornos" subtitle={`${rows.length} registros · ${formatRangeLabel(range)}`}>
+      <PageHeader
+        title="Histórico de retornos"
+        subtitle={`${rows.length} registros · ${formatRangeLabel(range)}`}
+      >
+        <ScopeToggle current={escopo} />
         <PeriodPicker range={range} />
       </PageHeader>
 
       <HistoryFilters catalogs={catalogs} />
 
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs font-medium uppercase tracking-wide text-fg-subtle">
-                <th className="px-4 py-3 font-medium">Data</th>
-                <th className="px-4 py-3 font-medium">Produto</th>
-                <th className="px-4 py-3 font-medium">Caminhão</th>
-                <th className="px-4 py-3 font-medium">Setor</th>
-                <th className="px-4 py-3 font-medium">Funcionário</th>
-                <th className="px-4 py-3 font-medium">Motivo</th>
-                <th className="px-4 py-3 text-right font-medium">Qtd</th>
-                <th className="px-4 py-3 text-right font-medium">Valor</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-b border-line/60 transition-colors last:border-0 hover:bg-elevated/50">
-                  <td className="whitespace-nowrap px-4 py-3 text-fg-muted">
-                    {r.data.split("-").reverse().join("/")}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-fg">{r.product}</td>
-                  <td className="px-4 py-3 text-fg-muted">{r.truck}</td>
-                  <td className="px-4 py-3 text-fg-muted">{r.setor}</td>
-                  <td className="px-4 py-3 text-fg-muted">{r.funcionario}</td>
-                  <td className="px-4 py-3 text-fg-muted">
-                    {r.motivo ? (
-                      <span>
-                        {r.categoria && <span className="text-fg-subtle">{r.categoria} · </span>}
-                        {r.motivo}
-                      </span>
-                    ) : (
-                      <span className="text-fg-subtle">— a classificar —</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-fg">{formatNumber(r.quantidade)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-fg-muted">
-                    {r.valorPerdido ? formatCurrency(r.valorPerdido) : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant={statusVariant[r.status]}>{r.status}</Badge>
-                  </td>
-                </tr>
-              ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-fg-muted">
-                    Nenhum retorno encontrado para os filtros.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <ReturnsTable rows={rows} />
     </div>
   );
 }

@@ -36,6 +36,7 @@ export type ReturnFilters = {
   truckId?: string;
   clientId?: string;
   categoryId?: string;
+  registradoPor?: string;
 };
 
 export const getReturnsList = cache(async (filters: ReturnFilters = {}): Promise<ReturnRow[]> => {
@@ -52,6 +53,7 @@ export const getReturnsList = cache(async (filters: ReturnFilters = {}): Promise
 
   if (filters.range) q = q.gte("data_retorno", filters.range.from).lte("data_retorno", filters.range.to);
   if (filters.status?.length) q = q.in("status", filters.status);
+  if (filters.registradoPor) q = q.eq("registrado_por", filters.registradoPor);
   if (filters.setorId) q = q.eq("setor_origem_id", filters.setorId);
   if (filters.funcionarioId) q = q.eq("funcionario_id", filters.funcionarioId);
   if (filters.truckId) q = q.eq("truck_id", filters.truckId);
