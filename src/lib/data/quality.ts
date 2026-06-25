@@ -324,7 +324,7 @@ export const getQualityDashboard = cache(async (range: DateRange): Promise<Quali
     supabase.from("return_categories").select("id, nome, cor"),
     supabase.from("return_reasons").select("id, category_id"),
     supabase.from("products").select("id, custo_unitario"),
-    supabase.from("sectors").select("id, nome"),
+    supabase.from("sectors").select("id, nome, tipo_producao"),
     supabase.from("employees").select("id, nome"),
     supabase.from("trucks").select("id, identificador"),
   ]);
@@ -337,11 +337,16 @@ export const getQualityDashboard = cache(async (range: DateRange): Promise<Quali
   const reasonCat = new Map((reasons.data ?? []).map((r) => [r.id, r.category_id]));
   const custoById = new Map((prods.data ?? []).map((p) => [p.id, p.custo_unitario ?? 0]));
   const setorNome = new Map((secs.data ?? []).map((s) => [s.id, s.nome]));
+  // setores que medem por chapa não entram no % de retorno (taxa é sobre peças)
+  const chapaSet = new Set((secs.data ?? []).filter((s) => s.tipo_producao === "chapa").map((s) => s.id));
   const funcNome = new Map((emps.data ?? []).map((e) => [e.id, e.nome]));
   const truckNome = new Map((trucks.data ?? []).map((t) => [t.id, t.identificador]));
 
   const pecas = returns.reduce((a, r) => a + r.quantidade_retornada, 0);
-  const producao = prod.reduce((a, p) => a + p.quantidade_produzida, 0);
+  // produção em PEÇAS apenas (exclui chapas) — base correta do % de retorno
+  const producao = prod
+    .filter((p) => !chapaSet.has(p.setor_id))
+    .reduce((a, p) => a + p.quantidade_produzida, 0);
   const valorPerdido = returns.reduce(
     (a, r) => a + (r.valor_perdido ?? r.quantidade_retornada * (custoById.get(r.product_id ?? "") ?? 0)),
     0,
@@ -387,7 +392,7 @@ export const getQualityDashboard = cache(async (range: DateRange): Promise<Quali
   const prodBySetor = new Map<string, number>();
   for (const p of prod) if (p.setor_id) prodBySetor.set(p.setor_id, (prodBySetor.get(p.setor_id) ?? 0) + p.quantidade_produzida);
   const setorIds = new Set([...retBySetor.keys(), ...prodBySetor.keys()]);
-  const porSetor = [...setorIds].map((id) => {
+  const porSetor = [...setorIds].filter((id) => !chapaSet.has(id)).map((id) => {
     const producaoS = prodBySetor.get(id) ?? 0;
     const retornos = retBySetor.get(id) ?? 0;
     return { nome: setorNome.get(id) ?? "—", producao: producaoS, retornos, taxa: producaoS ? retornos / producaoS : 0 };
