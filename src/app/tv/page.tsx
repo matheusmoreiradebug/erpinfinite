@@ -1,4 +1,5 @@
-import { Radio, Trophy, AlertTriangle, PackageX } from "lucide-react";
+import Link from "next/link";
+import { Radio, Trophy, AlertTriangle, PackageX, ArrowLeft } from "lucide-react";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { AutoRefresh } from "@/components/tv/auto-refresh";
 import { getDashboardData, getLatestProductionDate } from "@/lib/data/queries";
@@ -36,6 +37,12 @@ export default async function TvPage() {
           </div>
         </div>
         <div className="flex items-center gap-4 text-fg-muted">
+          <Link
+            href="/"
+            className="flex items-center gap-2 rounded-full border border-line bg-panel/60 px-3 py-1.5 text-sm font-medium text-fg-muted transition-colors hover:bg-elevated hover:text-fg"
+          >
+            <ArrowLeft className="size-4" /> Voltar
+          </Link>
           <span className="flex items-center gap-2 rounded-full border border-success/30 bg-success/10 px-3 py-1.5 text-sm font-medium text-success">
             <Radio className="size-4 animate-pulse" /> Ao vivo
           </span>
