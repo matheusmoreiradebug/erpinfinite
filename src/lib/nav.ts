@@ -138,19 +138,11 @@ export const navItems: NavItem[] = [
 
   // ---- Logística ----
   {
-    label: "Lista de produção",
+    label: "Listas de produção",
     href: "/logistica",
     icon: ClipboardList,
-    description: "Carregamento diário",
-    roles: ["admin", "almoxarifado"],
-    section: "logistica",
-  },
-  {
-    label: "Relatório semanal",
-    href: "/logistica/relatorio",
-    icon: FileBarChart,
-    description: "Conferência da semana",
-    roles: ["admin", "qualidade", "gestor", "almoxarifado"],
+    description: "Criar e imprimir listas",
+    roles: ["admin", "logistica"],
     section: "logistica",
   },
 ];

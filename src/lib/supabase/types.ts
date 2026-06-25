@@ -10,7 +10,17 @@ export type UserRole =
   | "operador"
   | "viewer"
   | "qualidade"
-  | "almoxarifado";
+  | "almoxarifado"
+  | "logistica";
+
+export type ListStatus =
+  | "rascunho"
+  | "aguardando_impressao"
+  | "em_producao"
+  | "producao_concluida"
+  | "expedida"
+  | "finalizada";
+export type ListPriority = "baixa" | "normal" | "alta" | "urgente";
 
 export type Json = string | number | boolean | null | { [k: string]: Json } | Json[];
 
@@ -46,6 +56,7 @@ export type Database = {
           meta_mensal: number | null;
           cor: string | null;
           ativo: boolean;
+          tipo_producao: "peca" | "chapa";
           created_at: string;
           updated_at: string;
         };
@@ -58,6 +69,7 @@ export type Database = {
           meta_mensal?: number | null;
           cor?: string | null;
           ativo?: boolean;
+          tipo_producao?: "peca" | "chapa";
         };
         Update: Partial<{
           nome: string;
@@ -66,6 +78,7 @@ export type Database = {
           meta_mensal: number | null;
           cor: string | null;
           ativo: boolean;
+          tipo_producao: "peca" | "chapa";
         }>;
         Relationships: [];
       };
@@ -254,6 +267,42 @@ export type Database = {
         Row: { id: string; org_id: string; data: string; linha: string; caminhao: number; cor: "branco" | "preto"; movel: string; quantidade: number; created_by: string | null; created_at: string; updated_at: string };
         Insert: { id?: string; org_id: string; data: string; linha: string; caminhao: number; cor: "branco" | "preto"; movel: string; quantidade: number; created_by?: string | null };
         Update: Partial<{ data: string; linha: string; caminhao: number; cor: "branco" | "preto"; movel: string; quantidade: number }>;
+        Relationships: [];
+      };
+      production_lists: {
+        Row: {
+          id: string; org_id: string; codigo: string; data_producao: string; data_entrega: string | null;
+          client_id: string | null; cliente_nome: string | null; pedido: string | null;
+          prioridade: ListPriority; status: ListStatus; observacao: string | null;
+          created_by: string | null; created_at: string; updated_at: string;
+        };
+        Insert: {
+          id?: string; org_id: string; codigo: string; data_producao: string; data_entrega?: string | null;
+          client_id?: string | null; cliente_nome?: string | null; pedido?: string | null;
+          prioridade?: ListPriority; status?: ListStatus; observacao?: string | null; created_by?: string | null;
+        };
+        Update: Partial<{
+          data_producao: string; data_entrega: string | null; client_id: string | null; cliente_nome: string | null;
+          pedido: string | null; prioridade: ListPriority; status: ListStatus; observacao: string | null;
+        }>;
+        Relationships: [];
+      };
+      production_list_items: {
+        Row: {
+          id: string; org_id: string; list_id: string; linha: string; caminhao: number | null;
+          cor: "branco" | "preto"; movel: string; quantidade: number; ordem: number | null; created_at: string;
+        };
+        Insert: {
+          id?: string; org_id: string; list_id: string; linha: string; caminhao?: number | null;
+          cor?: "branco" | "preto"; movel: string; quantidade: number; ordem?: number | null;
+        };
+        Update: Partial<{ linha: string; caminhao: number | null; cor: "branco" | "preto"; movel: string; quantidade: number; ordem: number | null }>;
+        Relationships: [];
+      };
+      list_sequences: {
+        Row: { org_id: string; ano: number; ultimo: number };
+        Insert: { org_id: string; ano: number; ultimo?: number };
+        Update: Partial<{ ultimo: number }>;
         Relationships: [];
       };
     };

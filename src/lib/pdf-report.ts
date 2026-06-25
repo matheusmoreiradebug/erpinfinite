@@ -238,6 +238,123 @@ export async function buildReportPdf(
 }
 
 // ============================================================================
+// LISTA DE PRODUÇÃO — layout A4 para impressão industrial
+// ============================================================================
+export type ListaPdfData = {
+  codigo: string;
+  dataProducao: string;
+  dataEntrega: string | null;
+  cliente: string;
+  pedido: string | null;
+  prioridade: string;
+  status: string;
+  observacao: string | null;
+  linhas: { label: string; total: number; caminhoes: { caminhao: number; itens: { cor: string; movel: string; quantidade: number }[] }[] }[];
+};
+
+function fit(s: string, font: PDFFont, size: number, maxW: number): string {
+  s = clean(s);
+  if (font.widthOfTextAtSize(s, size) <= maxW) return s;
+  while (s.length > 1 && font.widthOfTextAtSize(s + "…", size) > maxW) s = s.slice(0, -1);
+  return s + "…";
+}
+const brData = (iso: string) => iso.split("-").reverse().join("/");
+
+export async function buildListaPdf(d: ListaPdfData): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const ctx: Ctx = { doc, page: doc.addPage([A4.w, A4.h]), y: A4.h - M, font, bold };
+  const W = A4.w - M * 2;
+
+  const header = () => {
+    ctx.page.drawRectangle({ x: 0, y: A4.h - 64, width: A4.w, height: 64, color: BRAND });
+    ctx.page.drawText("Infinite Moveis", { x: M, y: A4.h - 30, size: 15, font: bold, color: WHITE });
+    ctx.page.drawText("LISTA DE PRODUCAO", { x: M, y: A4.h - 48, size: 10, font, color: WHITE });
+    const cod = clean(d.codigo);
+    ctx.page.drawText(cod, { x: A4.w - M - bold.widthOfTextAtSize(cod, 16), y: A4.h - 40, size: 16, font: bold, color: WHITE });
+    ctx.y = A4.h - 84;
+  };
+  header();
+
+  // bloco de informações
+  const info: [string, string][] = [
+    ["Cliente", d.cliente],
+    ["Pedido", d.pedido || "-"],
+    ["Data de producao", brData(d.dataProducao)],
+    ["Entrega prevista", d.dataEntrega ? brData(d.dataEntrega) : "-"],
+    ["Prioridade", d.prioridade],
+    ["Status", d.status],
+  ];
+  ctx.page.drawRectangle({ x: M, y: ctx.y - 56, width: W, height: 64, color: ZEBRA, borderColor: LINE, borderWidth: 0.5 });
+  info.forEach(([lab, val], i) => {
+    const col = i % 3;
+    const rowIx = Math.floor(i / 3);
+    const x = M + 10 + col * (W / 3);
+    const y = ctx.y - 4 - rowIx * 28;
+    ctx.page.drawText(clean(lab.toUpperCase()), { x, y, size: 6.5, font, color: MUTED });
+    ctx.page.drawText(fit(val, bold, 10, W / 3 - 16), { x, y: y - 12, size: 10, font: bold, color: INK });
+  });
+  ctx.y -= 76;
+
+  // linhas de produto
+  const colMovel = W - 150;
+  for (const linha of d.linhas) {
+    ensure(ctx, 50);
+    // faixa do título da linha
+    ctx.page.drawRectangle({ x: M, y: ctx.y - 4, width: W, height: 20, color: INK });
+    ctx.page.drawText(clean(linha.label.toUpperCase()), { x: M + 8, y: ctx.y + 1, size: 10, font: bold, color: WHITE });
+    const tot = `TOTAL: ${linha.total}`;
+    ctx.page.drawText(tot, { x: A4.w - M - 8 - bold.widthOfTextAtSize(tot, 9), y: ctx.y + 1, size: 9, font: bold, color: WHITE });
+    ctx.y -= 24;
+
+    for (const cam of linha.caminhoes) {
+      ensure(ctx, 28);
+      ctx.page.drawText(clean(`Caminhao ${cam.caminhao}`), { x: M + 4, y: ctx.y, size: 9.5, font: bold, color: BRAND });
+      ctx.y -= 15;
+      for (const it of cam.itens) {
+        ensure(ctx, 16);
+        // checkbox de conferência
+        ctx.page.drawRectangle({ x: M + 6, y: ctx.y - 1, width: 9, height: 9, borderColor: rgb(0.6, 0.62, 0.66), borderWidth: 0.8 });
+        ctx.page.drawText(fit(it.movel, font, 9.5, colMovel - 30), { x: M + 22, y: ctx.y, size: 9.5, font, color: INK });
+        ctx.page.drawText(it.cor === "preto" ? "PRETO" : "BRANCO", { x: M + colMovel, y: ctx.y, size: 7.5, font, color: it.cor === "preto" ? INK : MUTED });
+        const q = String(it.quantidade);
+        ctx.page.drawText(q, { x: A4.w - M - 12 - bold.widthOfTextAtSize(q, 10), y: ctx.y, size: 10, font: bold, color: INK });
+        ctx.y -= 15;
+      }
+      ctx.y -= 3;
+    }
+    ctx.y -= 6;
+  }
+
+  // observações + assinaturas
+  ensure(ctx, 110);
+  ctx.y -= 6;
+  ctx.page.drawText("OBSERVACOES", { x: M, y: ctx.y, size: 8, font: bold, color: MUTED });
+  ctx.y -= 6;
+  ctx.page.drawRectangle({ x: M, y: ctx.y - 44, width: W, height: 44, borderColor: LINE, borderWidth: 0.5 });
+  if (d.observacao) ctx.page.drawText(fit(d.observacao, font, 9, W - 16), { x: M + 8, y: ctx.y - 14, size: 9, font, color: INK });
+  ctx.y -= 76;
+  // assinaturas
+  const sigW = (W - 30) / 2;
+  [["Conferente", M], ["Responsavel", M + sigW + 30]].forEach(([lab, x]) => {
+    const xn = x as number;
+    ctx.page.drawLine({ start: { x: xn, y: ctx.y }, end: { x: xn + sigW, y: ctx.y }, thickness: 0.6, color: rgb(0.5, 0.52, 0.56) });
+    ctx.page.drawText(clean(lab as string), { x: xn, y: ctx.y - 12, size: 8, font, color: MUTED });
+  });
+
+  // rodapé com paginação
+  const pages = doc.getPages();
+  pages.forEach((p, i) => {
+    p.drawText(clean(`${d.codigo}  -  gerado em ${new Date().toLocaleDateString("pt-BR")}`), { x: M, y: 22, size: 7, font, color: MUTED });
+    const pg = `${i + 1}/${pages.length}`;
+    p.drawText(pg, { x: A4.w - M - font.widthOfTextAtSize(pg, 7), y: 22, size: 7, font, color: MUTED });
+  });
+
+  return doc.save();
+}
+
+// ============================================================================
 // Relatório de QUALIDADE
 // ============================================================================
 export type QualityReportData = {
