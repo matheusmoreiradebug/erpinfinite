@@ -30,7 +30,7 @@ export default async function SetoresPage({
       </PageHeader>
       <SectorsManager
         sectors={sectors}
-        sectorProduction={dashboard.sectorProduction}
+        sectorProduction={[...dashboard.sectorProduction, ...(dashboard.chapas?.sectorProduction ?? [])]}
         headcount={headcount}
       />
     </div>

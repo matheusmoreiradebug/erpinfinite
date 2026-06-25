@@ -11,6 +11,7 @@ export type SectorDTO = {
   metaMensal: number | null;
   cor: string;
   ativo: boolean;
+  tipo: "peca" | "chapa";
 };
 
 export type EmployeeDTO = {
@@ -32,13 +33,28 @@ export type DashboardKpis = {
   melhorDia: { data: string; valor: number } | null;
 };
 
+export type SectorProd = { setor: string; producao: number; meta: number };
+export type RankItem = { nome: string; setor: string; total: number; media: number };
+
+/** Bloco de produção em CHAPAS (setor Fita) — unidade separada das peças. */
+export type ChapasBlock = {
+  producao: number;
+  meta: number;
+  aproveitamento: number;
+  diasProduzidos: number;
+  funcionariosAtivos: number;
+  sectorProduction: SectorProd[];
+  ranking: RankItem[];
+};
+
 export type DashboardData = {
   kpis: DashboardKpis;
   dailyProduction: { data: string; producao: number; meta: number }[];
-  sectorProduction: { setor: string; producao: number; meta: number }[];
-  ranking: { nome: string; setor: string; total: number; media: number }[];
+  sectorProduction: SectorProd[];
+  ranking: RankItem[];
   alerts: mock.Alert[];
   insights: mock.Insight[];
+  chapas: ChapasBlock | null; // null quando não há setor/produção em chapas
   fromMock: boolean;
 };
 
@@ -71,6 +87,7 @@ const toSectorDTO = (s: {
   meta_mensal: number | null;
   cor: string | null;
   ativo: boolean;
+  tipo_producao: "peca" | "chapa";
 }): SectorDTO => ({
   id: s.id,
   nome: s.nome,
@@ -78,9 +95,11 @@ const toSectorDTO = (s: {
   metaMensal: s.meta_mensal,
   cor: s.cor ?? "#2563eb",
   ativo: s.ativo,
+  tipo: s.tipo_producao ?? "peca",
 });
 
-const mockSectors = (): SectorDTO[] => mock.sectors.map((s) => ({ ...s, metaMensal: null }));
+const mockSectors = (): SectorDTO[] =>
+  mock.sectors.map((s) => ({ ...s, metaMensal: null, tipo: "peca" as const }));
 const mockEmployees = (): EmployeeDTO[] =>
   mock.employees.map((e) => ({ ...e, dataAdmissao: null }));
 
@@ -90,7 +109,7 @@ export const getSectors = cache(async (): Promise<SectorDTO[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("sectors")
-    .select("id, nome, meta_diaria_funcionario, meta_mensal, cor, ativo")
+    .select("id, nome, meta_diaria_funcionario, meta_mensal, cor, ativo, tipo_producao")
     .eq("ativo", true)
     .order("nome");
   if (error || !data) return mockSectors();
@@ -116,7 +135,7 @@ export const getAllSectors = cache(async (): Promise<SectorDTO[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("sectors")
-    .select("id, nome, meta_diaria_funcionario, meta_mensal, cor, ativo")
+    .select("id, nome, meta_diaria_funcionario, meta_mensal, cor, ativo, tipo_producao")
     .order("ativo", { ascending: false })
     .order("nome");
   if (error || !data) return mockSectors();
@@ -142,6 +161,72 @@ export const getEmployees = cache(async (): Promise<EmployeeDTO[]> => {
   }));
 });
 
+type RawEntry = { funcionario_id: string; setor_id: string; data: string; quantidade_produzida: number };
+
+/** Agrega produção em CHAPAS (setor Fita) — mesma lógica das peças, unidade separada. */
+function aggregateChapas(
+  entries: RawEntry[],
+  sectorById: Map<string, SectorDTO>,
+  empById: Map<string, EmployeeDTO>,
+): ChapasBlock {
+  const headsBySectorDay = new Map<string, Set<string>>();
+  const dias = new Set<string>();
+  const funcs = new Set<string>();
+  for (const e of entries) {
+    dias.add(e.data);
+    funcs.add(e.funcionario_id);
+    const k = `${e.data}|${e.setor_id}`;
+    const set = headsBySectorDay.get(k) ?? new Set<string>();
+    set.add(e.funcionario_id);
+    headsBySectorDay.set(k, set);
+  }
+  const sectorAgg = new Map<string, { prod: number; meta: number }>();
+  for (const [k, heads] of headsBySectorDay) {
+    const setorId = k.split("|")[1];
+    const s = sectorById.get(setorId);
+    if (!s) continue;
+    const cur = sectorAgg.get(setorId) ?? { prod: 0, meta: 0 };
+    cur.meta += heads.size * s.metaIndividual;
+    sectorAgg.set(setorId, cur);
+  }
+  for (const e of entries) {
+    const cur = sectorAgg.get(e.setor_id);
+    if (cur) cur.prod += e.quantidade_produzida;
+  }
+  const sectorProduction: SectorProd[] = [...sectorAgg.entries()]
+    .map(([id, v]) => ({ setor: sectorById.get(id)?.nome ?? "—", producao: v.prod, meta: v.meta }))
+    .sort((a, b) => b.producao - a.producao);
+
+  const empAgg = new Map<string, { total: number; dias: Set<string> }>();
+  for (const e of entries) {
+    const cur = empAgg.get(e.funcionario_id) ?? { total: 0, dias: new Set<string>() };
+    cur.total += e.quantidade_produzida;
+    cur.dias.add(e.data);
+    empAgg.set(e.funcionario_id, cur);
+  }
+  const ranking: RankItem[] = [...empAgg.entries()]
+    .map(([id, v]) => ({
+      nome: empById.get(id)?.nome ?? "—",
+      setor: "Fita",
+      total: v.total,
+      media: v.dias.size ? Math.round((v.total / v.dias.size) * 10) / 10 : 0,
+    }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 7);
+
+  const producao = entries.reduce((a, e) => a + e.quantidade_produzida, 0);
+  const meta = sectorProduction.reduce((a, s) => a + s.meta, 0);
+  return {
+    producao,
+    meta,
+    aproveitamento: meta ? producao / meta : 0,
+    diasProduzidos: dias.size,
+    funcionariosAtivos: funcs.size,
+    sectorProduction,
+    ranking,
+  };
+}
+
 /**
  * Dados consolidados do dashboard. Busca a produção crua e calcula as métricas
  * em um único lugar (dataset pequeno; evita várias idas ao banco).
@@ -155,6 +240,7 @@ export const getDashboardData = cache(async (range: DateRange): Promise<Dashboar
       ranking: mock.ranking,
       alerts: mock.alerts,
       insights: mock.insights,
+      chapas: null,
       fromMock: true,
     };
   }
@@ -179,8 +265,10 @@ export const getDashboardData = cache(async (range: DateRange): Promise<Dashboar
   const sectorById = new Map(sectors.map((s) => [s.id, s]));
   const empById = new Map(employees.map((e) => [e.id, e]));
 
-  // já filtrado no banco pelo período
-  const monthEntries = entries;
+  // separa por unidade: peças (dashboard principal) × chapas (setor Fita)
+  const chapaEntries = entries.filter((e) => sectorById.get(e.setor_id)?.tipo === "chapa");
+  const pecaEntries = entries.filter((e) => sectorById.get(e.setor_id)?.tipo !== "chapa");
+  const monthEntries = pecaEntries; // todas as métricas principais são em peças
 
   // --- produção diária (soma por dia) ---
   const byDay = new Map<string, { prod: number; metaFuncs: Set<string>; heads: Set<string> }>();
@@ -303,6 +391,11 @@ export const getDashboardData = cache(async (range: DateRange): Promise<Dashboar
         }))
       : mock.insights;
 
+  const temChapa = sectors.some((s) => s.tipo === "chapa");
+  const chapas: ChapasBlock | null = temChapa
+    ? aggregateChapas(chapaEntries, sectorById, empById)
+    : null;
+
   return {
     kpis,
     dailyProduction,
@@ -310,6 +403,7 @@ export const getDashboardData = cache(async (range: DateRange): Promise<Dashboar
     ranking,
     alerts,
     insights,
+    chapas,
     fromMock: false,
   };
 });

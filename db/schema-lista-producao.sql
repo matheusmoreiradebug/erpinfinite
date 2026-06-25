@@ -32,12 +32,8 @@ alter table sectors
   add column if not exists tipo_producao text not null default 'peca'
   check (tipo_producao in ('peca','chapa'));
 
--- setor Fita trabalha por CHAPA (cria se não existir)
-insert into sectors (org_id, nome, slug, meta_diaria_funcionario, cor, tipo_producao)
-select o.id, 'Fita', 'fita', 0, '#a855f7', 'chapa'
-from organizations o
-where o.slug = 'infinite'
-on conflict (org_id, slug) do update set tipo_producao = 'chapa';
+-- o setor "Fita de Borda" mede a produção por CHAPA (não por peça)
+update sectors set tipo_producao = 'chapa' where slug = 'fita-de-borda';
 
 -- ----------------------------------------------------------------------------
 -- 4. SEQUÊNCIA do código LP-AAAA-NNNNNN (por organização e ano)

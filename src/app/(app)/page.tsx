@@ -12,6 +12,7 @@ import {
   Award,
   FileText,
   FileSpreadsheet,
+  Layers,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -32,7 +33,7 @@ export default async function DashboardPage({
 }) {
   const sp = await searchParams;
   const range = parseRange(sp);
-  const { kpis, dailyProduction, sectorProduction, ranking, alerts, insights } =
+  const { kpis, dailyProduction, sectorProduction, ranking, alerts, insights, chapas } =
     await getDashboardData(range);
 
   const vazio = kpis.diasProduzidos === 0;
@@ -192,6 +193,47 @@ export default async function DashboardPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* ===== PRODUÇÃO EM CHAPAS (setor Fita) — unidade separada ===== */}
+      {chapas && (
+        <div className="space-y-4 border-t border-line pt-5">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-8 place-items-center rounded-xl" style={{ backgroundColor: "#a855f733", color: "#a855f7" }}>
+              <Layers className="size-4" />
+            </span>
+            <div>
+              <h3 className="text-sm font-medium text-fg">Produção em chapas — Fita</h3>
+              <p className="text-xs text-fg-subtle">Unidade própria — nunca somada às peças</p>
+            </div>
+          </div>
+
+          {chapas.producao === 0 ? (
+            <Card className="px-5 py-6 text-center text-sm text-fg-muted">
+              Nenhuma produção em chapas lançada no período.
+            </Card>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <KpiCard label="Chapas produzidas" value={formatNumber(chapas.producao)} icon={Layers} hint={`Meta: ${formatNumber(chapas.meta)} chapas`} accent />
+                <KpiCard label="Meta de chapas" value={formatNumber(chapas.meta)} icon={Target} hint="Soma das metas" />
+                <KpiCard label="Aproveitamento" value={formatPercent(chapas.aproveitamento)} icon={Percent} hint="Chapas ÷ meta" />
+                <KpiCard label="Dias produzidos" value={formatNumber(chapas.diasProduzidos)} icon={CalendarCheck} hint={`${formatNumber(chapas.funcionariosAtivos)} funcionário(s)`} />
+              </div>
+              {chapas.ranking.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Ranking por chapas</CardTitle>
+                    <CardDescription>Setor Fita</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <RankingList ranking={chapas.ranking} />
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
