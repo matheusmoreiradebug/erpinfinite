@@ -51,3 +51,12 @@ Thumbs.db
 # dados internos / planilhas com informação sensível (manter local)
 *.xlsx
 *.xls
+
+# pasta de referências internas (planilhas, modelos) — fora do Git
+/Arquivos/
+
+# public: não versionar arquivos jogados aqui, MAS manter os assets do app
+# (logo e fundo do login precisam ir para o Git, senão somem no deploy da Vercel)
+/public/*
+!/public/logo.png
+!/public/login-bg.png
