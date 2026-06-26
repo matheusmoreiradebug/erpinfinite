@@ -9,12 +9,14 @@ export function Dialog({
   title,
   description,
   children,
+  wide,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   description?: string;
   children: React.ReactNode;
+  wide?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -35,7 +37,7 @@ export function Dialog({
         className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-up"
         onClick={onClose}
       />
-      <div className="relative z-10 my-8 w-full max-w-md animate-fade-up rounded-2xl border border-line bg-ink-2 shadow-2xl">
+      <div className={`relative z-10 my-8 w-full ${wide ? "max-w-xl" : "max-w-md"} animate-fade-up rounded-2xl border border-line bg-ink-2 shadow-2xl`}>
         <div className="flex items-start justify-between border-b border-line p-5">
           <div>
             <h2 className="text-base font-semibold tracking-tight text-fg">{title}</h2>

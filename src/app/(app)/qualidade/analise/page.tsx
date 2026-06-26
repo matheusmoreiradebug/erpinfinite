@@ -2,12 +2,13 @@ import { ClipboardCheck } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { AnalysisQueue } from "@/components/qualidade/analysis-queue";
-import { getReturnsList, signPhotos, getQualityCatalogs } from "@/lib/data/quality";
+import { getReturnsList, signPhotos, getQualityCatalogs, getReturnRecurrence } from "@/lib/data/quality";
 
 export default async function AnalisePage() {
-  const [pendentes, catalogs] = await Promise.all([
+  const [pendentes, catalogs, recurrence] = await Promise.all([
     getReturnsList({ status: ["registrado", "em_analise"] }),
     getQualityCatalogs(),
+    getReturnRecurrence(),
   ]);
 
   const allPaths = pendentes.flatMap((r) => r.fotosPaths);
@@ -25,7 +26,7 @@ export default async function AnalisePage() {
         </Badge>
       </PageHeader>
 
-      <AnalysisQueue rows={pendentes} photoUrls={photoUrls} catalogs={catalogs} />
+      <AnalysisQueue rows={pendentes} photoUrls={photoUrls} catalogs={catalogs} recurrence={recurrence} />
     </div>
   );
 }

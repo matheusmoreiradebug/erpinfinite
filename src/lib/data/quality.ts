@@ -15,17 +15,26 @@ export type ReturnRow = {
   status: ReturnStatus;
   truck: string;
   client: string;
+  clientId: string | null;
   setorId: string | null;
   setor: string;
   funcionarioId: string | null;
   funcionario: string;
   product: string;
+  productId: string | null;
   motivoInicial: string | null;
   observacao: string | null;
   categoria: string | null;
   motivo: string | null;
+  reasonId: string | null;
   valorPerdido: number | null;
   fotosPaths: string[];
+  // ficha de análise
+  gravidade: string | null;
+  destino: string | null;
+  responsabilidade: string | null;
+  analise: string | null;
+  acaoPreventiva: string | null;
 };
 
 export type ReturnFilters = {
@@ -46,7 +55,7 @@ export const getReturnsList = cache(async (filters: ReturnFilters = {}): Promise
   let q = supabase
     .from("quality_returns")
     .select(
-      "id, data_retorno, hora_retorno, pedido, quantidade_retornada, status, truck_id, client_id, setor_origem_id, funcionario_id, product_id, motivo_inicial, observacao, reason_id, valor_perdido",
+      "id, data_retorno, hora_retorno, pedido, quantidade_retornada, status, truck_id, client_id, setor_origem_id, funcionario_id, product_id, motivo_inicial, observacao, reason_id, valor_perdido, gravidade, destino, responsabilidade, analise, acao_preventiva",
     )
     .order("data_retorno", { ascending: false })
     .order("created_at", { ascending: false });
@@ -112,19 +121,49 @@ export const getReturnsList = cache(async (filters: ReturnFilters = {}): Promise
       status: r.status as ReturnStatus,
       truck: r.truck_id ? (truckNome.get(r.truck_id) ?? "—") : "—",
       client: r.client_id ? (clientNome.get(r.client_id) ?? "—") : "—",
+      clientId: r.client_id,
       setorId: r.setor_origem_id,
       setor: r.setor_origem_id ? (setorNome.get(r.setor_origem_id) ?? "—") : "—",
       funcionarioId: r.funcionario_id,
       funcionario: r.funcionario_id ? (funcNome.get(r.funcionario_id) ?? "—") : "—",
       product: r.product_id ? (prodNome.get(r.product_id) ?? "—") : "—",
+      productId: r.product_id,
       motivoInicial: r.motivo_inicial,
       observacao: r.observacao,
       categoria: reason ? (catNome.get(reason.category_id) ?? null) : null,
       motivo: reason?.nome ?? null,
+      reasonId: r.reason_id,
       valorPerdido: r.valor_perdido,
       fotosPaths: fotosByReturn.get(r.id) ?? [],
+      gravidade: r.gravidade,
+      destino: r.destino,
+      responsabilidade: r.responsabilidade,
+      analise: r.analise,
+      acaoPreventiva: r.acao_preventiva,
     };
   });
+});
+
+/** Reincidência: nº de retornos por produto e por cliente nos últimos ~120 dias. */
+export type Recurrence = { byProduct: Record<string, number>; byClient: Record<string, number> };
+
+export const getReturnRecurrence = cache(async (): Promise<Recurrence> => {
+  const empty: Recurrence = { byProduct: {}, byClient: {} };
+  if (!isSupabaseConfigured) return empty;
+  const supabase = await createClient();
+  const since = new Date();
+  since.setDate(since.getDate() - 120);
+  const { data } = await supabase
+    .from("quality_returns")
+    .select("product_id, client_id")
+    .gte("data_retorno", since.toISOString().slice(0, 10));
+  const byProduct: Record<string, number> = {};
+  const byClient: Record<string, number> = {};
+  for (const r of data ?? []) {
+    if (r.product_id) byProduct[r.product_id] = (byProduct[r.product_id] ?? 0) + 1;
+    if (r.client_id) byClient[r.client_id] = (byClient[r.client_id] ?? 0) + 1;
+  }
+  return { byProduct, byClient };
 });
 
 export type EmployeePerformance = {

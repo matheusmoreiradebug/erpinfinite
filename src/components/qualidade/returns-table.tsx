@@ -1,13 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Loader2, ImageOff } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2, ImageOff, Pencil } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { formatNumber, formatCurrency, cn } from "@/lib/utils";
-import type { ReturnRow } from "@/lib/data/quality";
+import type { ReturnRow, QualityCatalogs, Recurrence } from "@/lib/data/quality";
+import { gravidadeLabel, gravidadeCor, destinoLabel, responsavelLabel } from "@/lib/qualidade";
 import { getReturnPhotos } from "@/app/(app)/qualidade/actions";
+import { AnalysisDialog } from "@/components/qualidade/analysis-dialog";
 
 const statusVariant = {
   registrado: "warning",
@@ -18,8 +22,20 @@ const statusVariant = {
 
 const br = (iso: string) => iso.split("-").reverse().join("/");
 
-export function ReturnsTable({ rows }: { rows: ReturnRow[] }) {
+export function ReturnsTable({
+  rows,
+  catalogs,
+  recurrence,
+  canEdit,
+}: {
+  rows: ReturnRow[];
+  catalogs?: QualityCatalogs;
+  recurrence?: Recurrence;
+  canEdit?: boolean;
+}) {
+  const router = useRouter();
   const [sel, setSel] = useState<ReturnRow | null>(null);
+  const [editar, setEditar] = useState<ReturnRow | null>(null);
   const [fotos, setFotos] = useState<string[]>([]);
   const [loading, startLoading] = useTransition();
 
@@ -30,6 +46,8 @@ export function ReturnsTable({ rows }: { rows: ReturnRow[] }) {
       startLoading(async () => setFotos(await getReturnPhotos(r.id)));
     }
   };
+
+  const podeEditar = canEdit && catalogs && recurrence;
 
   return (
     <>
@@ -43,6 +61,7 @@ export function ReturnsTable({ rows }: { rows: ReturnRow[] }) {
                 <th className="px-4 py-3 font-medium">Caminhão</th>
                 <th className="px-4 py-3 font-medium">Setor</th>
                 <th className="px-4 py-3 font-medium">Motivo</th>
+                <th className="px-4 py-3 font-medium">Gravidade</th>
                 <th className="px-4 py-3 text-right font-medium">Qtd</th>
                 <th className="px-4 py-3 font-medium">Fotos</th>
                 <th className="px-4 py-3 font-medium">Status</th>
@@ -66,13 +85,23 @@ export function ReturnsTable({ rows }: { rows: ReturnRow[] }) {
                       <span className="text-fg-subtle">— a classificar —</span>
                     )}
                   </td>
+                  <td className="px-4 py-3">
+                    {r.gravidade ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-fg-muted">
+                        <span className="size-2 rounded-full" style={{ backgroundColor: gravidadeCor(r.gravidade) }} />
+                        {gravidadeLabel(r.gravidade)}
+                      </span>
+                    ) : (
+                      <span className="text-fg-subtle">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right tabular-nums text-fg">{formatNumber(r.quantidade)}</td>
                   <td className="px-4 py-3 text-fg-muted">{r.fotosPaths.length || "—"}</td>
                   <td className="px-4 py-3"><Badge variant={statusVariant[r.status]}>{r.status}</Badge></td>
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-fg-muted">Nenhum retorno encontrado.</td></tr>
+                <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-fg-muted">Nenhum retorno encontrado.</td></tr>
               )}
             </tbody>
           </table>
@@ -94,8 +123,33 @@ export function ReturnsTable({ rows }: { rows: ReturnRow[] }) {
               <Info label="Motivo (registro)" value={sel.motivoInicial ?? "—"} />
               <Info label="Classificação" value={sel.motivo ? `${sel.categoria} · ${sel.motivo}` : "a classificar"} />
             </dl>
-            {sel.observacao && (
-              <div className="rounded-xl border border-line bg-panel/60 px-3 py-2 text-xs text-fg-muted">{sel.observacao}</div>
+
+            {/* ficha de análise */}
+            {(sel.gravidade || sel.destino || sel.responsabilidade || sel.analise || sel.acaoPreventiva) && (
+              <div className="space-y-2.5 rounded-xl border border-line bg-panel/40 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-fg-subtle">Análise da qualidade</p>
+                <div className="flex flex-wrap gap-2">
+                  {sel.gravidade && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-white" style={{ backgroundColor: gravidadeCor(sel.gravidade) }}>
+                      {gravidadeLabel(sel.gravidade)}
+                    </span>
+                  )}
+                  {sel.destino && <Chip label="Destino" value={destinoLabel(sel.destino)!} />}
+                  {sel.responsabilidade && <Chip label="Responsável" value={responsavelLabel(sel.responsabilidade)!} />}
+                </div>
+                {sel.analise && (
+                  <div>
+                    <p className="text-[11px] text-fg-subtle">O que aconteceu</p>
+                    <p className="text-sm text-fg-muted">{sel.analise}</p>
+                  </div>
+                )}
+                {sel.acaoPreventiva && (
+                  <div>
+                    <p className="text-[11px] text-fg-subtle">Ação preventiva</p>
+                    <p className="text-sm text-fg-muted">{sel.acaoPreventiva}</p>
+                  </div>
+                )}
+              </div>
             )}
 
             <div>
@@ -115,9 +169,28 @@ export function ReturnsTable({ rows }: { rows: ReturnRow[] }) {
                 </div>
               )}
             </div>
+
+            {podeEditar && (
+              <div className="flex justify-end border-t border-line pt-3">
+                <Button size="sm" variant="secondary" onClick={() => { const r = sel; setSel(null); setEditar(r); }}>
+                  <Pencil className="size-4" />
+                  {sel.status === "registrado" || sel.status === "em_analise" ? "Analisar" : "Editar análise"}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </Dialog>
+
+      {podeEditar && (
+        <AnalysisDialog
+          row={editar}
+          catalogs={catalogs!}
+          recurrence={recurrence!}
+          onClose={() => setEditar(null)}
+          onDone={() => router.refresh()}
+        />
+      )}
     </>
   );
 }
@@ -128,5 +201,14 @@ function Info({ label, value }: { label: string; value: string }) {
       <dt className="text-[11px] text-fg-subtle">{label}</dt>
       <dd className={cn("font-medium text-fg")}>{value}</dd>
     </div>
+  );
+}
+
+function Chip({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-line bg-elevated px-2.5 py-1 text-xs">
+      <span className="text-fg-subtle">{label}:</span>
+      <span className="font-medium text-fg">{value}</span>
+    </span>
   );
 }

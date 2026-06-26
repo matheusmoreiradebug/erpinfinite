@@ -4,7 +4,7 @@ import { HistoryFilters } from "@/components/qualidade/history-filters";
 import { ReturnsTable } from "@/components/qualidade/returns-table";
 import { ScopeToggle } from "@/components/qualidade/scope-toggle";
 import {
-  getReturnsList, getQualityCatalogs, type ReturnFilters, type ReturnStatus,
+  getReturnsList, getQualityCatalogs, getReturnRecurrence, type ReturnFilters, type ReturnStatus,
 } from "@/lib/data/quality";
 import { getCurrentUser } from "@/lib/data/user";
 import { parseRange, formatRangeLabel } from "@/lib/date-range";
@@ -36,7 +36,12 @@ export default async function HistoricoPage({
     registradoPor: escopo === "meus" && user.id ? user.id : undefined,
   };
 
-  const [rows, catalogs] = await Promise.all([getReturnsList(filters), getQualityCatalogs()]);
+  const canEdit = user.role === "admin" || user.role === "qualidade";
+  const [rows, catalogs, recurrence] = await Promise.all([
+    getReturnsList(filters),
+    getQualityCatalogs(),
+    canEdit ? getReturnRecurrence() : Promise.resolve({ byProduct: {}, byClient: {} }),
+  ]);
 
   return (
     <div className="animate-fade-up space-y-6">
@@ -50,7 +55,7 @@ export default async function HistoricoPage({
 
       <HistoryFilters catalogs={catalogs} />
 
-      <ReturnsTable rows={rows} />
+      <ReturnsTable rows={rows} catalogs={catalogs} recurrence={recurrence} canEdit={canEdit} />
     </div>
   );
 }
