@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 export function Dialog({
@@ -18,6 +19,10 @@ export function Dialog({
   children: React.ReactNode;
   wide?: boolean;
 }) {
+  // monta só no cliente para o portal (document indisponível no SSR)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -29,16 +34,18 @@ export function Dialog({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  // renderiza no body — fora de qualquer ancestral com transform (ex.: animate-fade-up),
+  // senão o position:fixed se ancora no wrapper e o modal cai no fim da página.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center">
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-up"
         onClick={onClose}
       />
-      <div className={`relative z-10 my-8 w-full ${wide ? "max-w-xl" : "max-w-md"} animate-fade-up rounded-2xl border border-line bg-ink-2 shadow-2xl`}>
-        <div className="flex items-start justify-between border-b border-line p-5">
+      <div className={`relative z-10 my-8 flex max-h-[calc(100dvh-4rem)] w-full flex-col ${wide ? "max-w-xl" : "max-w-md"} animate-fade-up rounded-2xl border border-line bg-ink-2 shadow-2xl`}>
+        <div className="flex shrink-0 items-start justify-between border-b border-line p-5">
           <div>
             <h2 className="text-base font-semibold tracking-tight text-fg">{title}</h2>
             {description && <p className="mt-0.5 text-xs text-fg-muted">{description}</p>}
@@ -51,9 +58,10 @@ export function Dialog({
             <X className="size-4" />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="overflow-y-auto p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

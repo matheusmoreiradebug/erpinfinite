@@ -249,7 +249,7 @@ export function AnalysisDialog({
             <p className="rounded-xl border border-danger/25 bg-danger/[0.07] px-3 py-2 text-xs text-danger">{error}</p>
           )}
 
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="sticky bottom-0 -mx-5 -mb-5 mt-1 flex justify-end gap-2 border-t border-line bg-ink-2 px-5 py-3">
             <Button variant="secondary" size="sm" onClick={onClose}>Cancelar</Button>
             <Button size="sm" onClick={submit} disabled={pending || !reasonId || !gravidade}>
               {pending && <Loader2 className="size-4 animate-spin" />}
