@@ -15,6 +15,8 @@ import {
   Library,
   FileUp,
   TrendingDown,
+  ListChecks,
+  GitBranch,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/supabase/types";
@@ -37,6 +39,22 @@ export const navItems: NavItem[] = [
     icon: ClipboardList,
     description: "Lançamento diário",
     roles: ["admin", "qualidade", "gestor", "operador"],
+    section: "producao",
+  },
+  {
+    label: "Acompanhamento",
+    href: "/acompanhamento",
+    icon: ListChecks,
+    description: "Avançar itens pelas etapas",
+    roles: ["admin", "qualidade", "gestor"],
+    section: "producao",
+  },
+  {
+    label: "Produção (fluxo)",
+    href: "/producao-fluxo",
+    icon: GitBranch,
+    description: "Contagem real por peça",
+    roles: ["admin", "qualidade", "gestor"],
     section: "producao",
   },
   {

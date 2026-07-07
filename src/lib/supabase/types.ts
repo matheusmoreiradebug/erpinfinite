@@ -57,6 +57,8 @@ export type Database = {
           cor: string | null;
           ativo: boolean;
           tipo_producao: "peca" | "chapa";
+          ordem_fluxo: number | null;
+          etapa_final: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -70,6 +72,8 @@ export type Database = {
           cor?: string | null;
           ativo?: boolean;
           tipo_producao?: "peca" | "chapa";
+          ordem_fluxo?: number | null;
+          etapa_final?: boolean;
         };
         Update: Partial<{
           nome: string;
@@ -79,7 +83,21 @@ export type Database = {
           cor: string | null;
           ativo: boolean;
           tipo_producao: "peca" | "chapa";
+          ordem_fluxo: number | null;
+          etapa_final: boolean;
         }>;
+        Relationships: [];
+      };
+      list_item_stages: {
+        Row: {
+          id: string; org_id: string; list_item_id: string; setor_id: string;
+          quantidade: number; marcado_por: string | null; marcado_em: string;
+        };
+        Insert: {
+          id?: string; org_id: string; list_item_id: string; setor_id: string;
+          quantidade?: number; marcado_por?: string | null; marcado_em?: string;
+        };
+        Update: Partial<{ quantidade: number; marcado_por: string | null; marcado_em: string }>;
         Relationships: [];
       };
       employees: {
