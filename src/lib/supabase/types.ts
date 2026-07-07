@@ -214,6 +214,7 @@ export type Database = {
           product_id: string | null; quantidade_retornada: number; motivo_inicial: string | null; reason_id: string | null;
           observacao: string | null; valor_perdido: number | null; status: "registrado" | "em_analise" | "classificado" | "resolvido";
           gravidade: string | null; destino: string | null; responsabilidade: string | null; analise: string | null; acao_preventiva: string | null;
+          frete_valor: number | null; frete_cenario: string | null; frete_motorista: string | null;
           registrado_por: string | null; analisado_por: string | null; analisado_em: string | null; created_at: string; updated_at: string;
         };
         Insert: {
@@ -221,11 +222,13 @@ export type Database = {
           truck_id?: string | null; client_id?: string | null; setor_origem_id?: string | null; funcionario_id?: string | null;
           product_id?: string | null; quantidade_retornada: number; motivo_inicial?: string | null; reason_id?: string | null;
           observacao?: string | null; valor_perdido?: number | null; status?: "registrado" | "em_analise" | "classificado" | "resolvido";
+          frete_valor?: number | null; frete_cenario?: string | null; frete_motorista?: string | null;
           registrado_por?: string | null;
         };
         Update: Partial<{
           reason_id: string | null; observacao: string | null; valor_perdido: number | null;
           gravidade: string | null; destino: string | null; responsabilidade: string | null; analise: string | null; acao_preventiva: string | null;
+          frete_valor: number | null; frete_cenario: string | null; frete_motorista: string | null;
           status: "registrado" | "em_analise" | "classificado" | "resolvido"; analisado_por: string | null; analisado_em: string | null;
         }>;
         Relationships: [];

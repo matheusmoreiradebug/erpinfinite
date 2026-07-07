@@ -14,6 +14,7 @@ import {
   Tv,
   Library,
   FileUp,
+  TrendingDown,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/supabase/types";
@@ -125,6 +126,14 @@ export const navItems: NavItem[] = [
     href: "/tv",
     icon: Tv,
     description: "Painel para a fábrica",
+    roles: ["admin", "qualidade", "gestor"],
+    section: "qualidade",
+  },
+  {
+    label: "Perdas com frete",
+    href: "/frete",
+    icon: TrendingDown,
+    description: "Prejuízo com retornos",
     roles: ["admin", "qualidade", "gestor"],
     section: "qualidade",
   },

@@ -1,6 +1,16 @@
 // Constantes puras da Qualidade — seguras para client components
 // (NÃO importar src/lib/data/* aqui, puxa next/headers).
 
+export type FreteCenario = "perda_total" | "remarcacao";
+
+export const FRETE_CENARIOS: { key: FreteCenario; label: string; desc: string; cor: string }[] = [
+  { key: "perda_total", label: "Perda total", desc: "Cliente não recebeu / b.o. — pedido não remarca", cor: "#dc2626" },
+  { key: "remarcacao", label: "Remarcação", desc: "Vai voltar; o cliente paga a próxima viagem", cor: "#d97706" },
+];
+const freteMap = new Map(FRETE_CENARIOS.map((f) => [f.key, f]));
+export const freteCenarioLabel = (k?: string | null) => (k ? freteMap.get(k as FreteCenario)?.label ?? k : null);
+export const freteCenarioCor = (k?: string | null) => (k ? freteMap.get(k as FreteCenario)?.cor ?? "#6b7280" : "#6b7280");
+
 export type Gravidade = "baixa" | "media" | "alta" | "critica";
 export type Destino = "retrabalho" | "sucata" | "reposicao" | "reparada" | "sem_acao";
 export type Responsavel = "producao" | "transporte" | "cliente" | "fornecedor" | "projeto";

@@ -450,3 +450,88 @@ export const getQualityDashboard = cache(async (range: DateRange): Promise<Quali
     semVazio: returns.length === 0,
   };
 });
+
+// ---------------------------------------------------------------------------
+// Perdas com frete de retorno (o motorista cobra a volta = prejuízo)
+// ---------------------------------------------------------------------------
+export type FreteDashboard = {
+  total: number;
+  ocorrencias: number;
+  ticketMedio: number;
+  perdaTotal: number; // cenário perda_total
+  remarcacao: number; // cenário remarcacao
+  porCliente: { nome: string; total: number; count: number }[];
+  porMotorista: { nome: string; total: number; count: number }[];
+  porMes: { mes: string; total: number }[];
+  recentes: { id: string; data: string; cliente: string; valor: number; cenario: string | null; motorista: string | null; pedido: string | null }[];
+  semVazio: boolean;
+};
+
+const FRETE_ZERO: FreteDashboard = {
+  total: 0, ocorrencias: 0, ticketMedio: 0, perdaTotal: 0, remarcacao: 0,
+  porCliente: [], porMotorista: [], porMes: [], recentes: [], semVazio: true,
+};
+
+export const getFreteDashboard = cache(async (range: DateRange): Promise<FreteDashboard> => {
+  if (!isSupabaseConfigured) return FRETE_ZERO;
+  const supabase = await createClient();
+
+  const [retRes, cliRes] = await Promise.all([
+    supabase
+      .from("quality_returns")
+      .select("id, data_retorno, frete_valor, frete_cenario, frete_motorista, client_id, pedido")
+      .not("frete_valor", "is", null)
+      .gte("data_retorno", range.from)
+      .lte("data_retorno", range.to)
+      .order("data_retorno", { ascending: false }),
+    supabase.from("clients").select("id, nome"),
+  ]);
+
+  const rows = (retRes.data ?? []).filter((r) => (r.frete_valor ?? 0) > 0);
+  if (!rows.length) return { ...FRETE_ZERO, semVazio: true };
+  const cliNome = new Map((cliRes.data ?? []).map((c) => [c.id, c.nome]));
+
+  let total = 0, perdaTotal = 0, remarcacao = 0;
+  const porCli = new Map<string, { total: number; count: number }>();
+  const porMot = new Map<string, { total: number; count: number }>();
+  const porMes = new Map<string, number>();
+
+  for (const r of rows) {
+    const v = Number(r.frete_valor) || 0;
+    total += v;
+    if (r.frete_cenario === "perda_total") perdaTotal += v;
+    else if (r.frete_cenario === "remarcacao") remarcacao += v;
+
+    const cli = r.client_id ? (cliNome.get(r.client_id) ?? "—") : "—";
+    const c = porCli.get(cli) ?? { total: 0, count: 0 };
+    c.total += v; c.count++; porCli.set(cli, c);
+
+    const mot = (r.frete_motorista ?? "").trim() || "—";
+    const m = porMot.get(mot) ?? { total: 0, count: 0 };
+    m.total += v; m.count++; porMot.set(mot, m);
+
+    const mes = r.data_retorno.slice(0, 7); // YYYY-MM
+    porMes.set(mes, (porMes.get(mes) ?? 0) + v);
+  }
+
+  return {
+    total,
+    ocorrencias: rows.length,
+    ticketMedio: total / rows.length,
+    perdaTotal,
+    remarcacao,
+    porCliente: [...porCli.entries()].map(([nome, x]) => ({ nome, ...x })).sort((a, b) => b.total - a.total).slice(0, 12),
+    porMotorista: [...porMot.entries()].map(([nome, x]) => ({ nome, ...x })).sort((a, b) => b.total - a.total).slice(0, 12),
+    porMes: [...porMes.entries()].map(([mes, total2]) => ({ mes, total: total2 })).sort((a, b) => a.mes.localeCompare(b.mes)),
+    recentes: rows.slice(0, 15).map((r) => ({
+      id: r.id,
+      data: r.data_retorno,
+      cliente: r.client_id ? (cliNome.get(r.client_id) ?? "—") : "—",
+      valor: Number(r.frete_valor) || 0,
+      cenario: r.frete_cenario,
+      motorista: r.frete_motorista,
+      pedido: r.pedido,
+    })),
+    semVazio: false,
+  };
+});

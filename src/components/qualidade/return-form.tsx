@@ -2,11 +2,12 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { PackageX, Plus, Upload, Loader2, Check, X } from "lucide-react";
+import { PackageX, Plus, Upload, Loader2, Check, X, Truck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, inputClass } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { FRETE_CENARIOS } from "@/lib/qualidade";
 import type { QualityCatalogs, NamedItem } from "@/lib/data/quality";
 import { createReturn } from "@/app/(app)/qualidade/actions";
 
@@ -136,6 +137,29 @@ export function ReturnForm({ catalogs }: { catalogs: QualityCatalogs }) {
             <Field label="Observação">
               <textarea name="observacao" rows={2} placeholder="Detalhes adicionais…" className={cn(inputClass, "h-auto py-2")} />
             </Field>
+
+            {/* frete do retorno */}
+            <div className="rounded-xl border border-line bg-panel/40 p-3">
+              <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-fg-subtle">
+                <Truck className="size-3.5" /> Frete do retorno <span className="font-normal normal-case text-fg-subtle">(prejuízo da volta)</span>
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <Field label="Valor do frete (R$)" hint="O que o motorista cobrou">
+                  <input type="number" name="frete_valor" min={0} step="0.01" placeholder="0,00" className={inputClass} />
+                </Field>
+                <Field label="Cenário">
+                  <select name="frete_cenario" className={inputClass} defaultValue="">
+                    <option value="">—</option>
+                    {FRETE_CENARIOS.map((f) => (
+                      <option key={f.key} value={f.key}>{f.label}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Motorista / veículo">
+                  <input name="frete_motorista" placeholder="Ex.: Rafa" className={inputClass} />
+                </Field>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

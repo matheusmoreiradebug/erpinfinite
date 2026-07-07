@@ -95,6 +95,9 @@ export async function createReturn(formData: FormData): Promise<SaveReturnResult
       motivo_inicial: s("motivo_inicial") || null,
       observacao: s("observacao") || null,
       valor_perdido: valorPerdido,
+      frete_valor: Number(s("frete_valor")) > 0 ? Number(s("frete_valor")) : null,
+      frete_cenario: s("frete_cenario") || null,
+      frete_motorista: s("frete_motorista") || null,
       status: "registrado",
       registrado_por: user.id,
     })
