@@ -13,6 +13,7 @@ import {
   CalendarCheck,
   Tv,
   Library,
+  FileUp,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole } from "@/lib/supabase/types";
@@ -137,6 +138,14 @@ export const navItems: NavItem[] = [
   },
 
   // ---- Logística ----
+  {
+    label: "Importar Lista",
+    href: "/logistica/importar",
+    icon: FileUp,
+    description: "Excel → Lista de Produção",
+    roles: ["admin", "logistica", "qualidade"],
+    section: "logistica",
+  },
   {
     label: "Listas de produção",
     href: "/logistica",
