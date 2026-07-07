@@ -65,7 +65,10 @@ export async function parseListaWorkbook(data: ArrayBuffer | Buffer): Promise<Pa
   const linhas: ImportLinha[] = [];
   const avisos: ImportAviso[] = [];
   const moveis = new Set<string>();
-  let totItens = 0, totPecas = 0, totInvalid = 0, totDup = 0, totCam = 0;
+  // caminhão N é o MESMO caminhão físico entre as abas (carrega de várias linhas),
+  // então o total de caminhões são os números distintos, não a soma por aba.
+  const caminhoesSet = new Set<number>();
+  let totItens = 0, totPecas = 0, totInvalid = 0, totDup = 0;
 
   for (const ws of wb.worksheets) {
     const linha = linhaFor(ws.name);
@@ -121,13 +124,13 @@ export async function parseListaWorkbook(data: ArrayBuffer | Buffer): Promise<Pa
     const caminhoes: ImportCaminhao[] = [...cams.entries()]
       .sort((x, y) => x[0] - y[0])
       .map(([n, itens]) => ({ caminhao: n === 0 ? null : n, itens }));
-    totCam += caminhoes.length;
+    for (const n of cams.keys()) if (n > 0) caminhoesSet.add(n);
     linhas.push({ linha, aba: ws.name, caminhoes });
   }
 
   return {
     linhas,
-    stats: { linhasLidas: linhas.filter((l) => !l.semCabecalho).length, caminhoes: totCam, itens: totItens, pecas: totPecas, moveisUnicos: moveis.size, invalidos: totInvalid, duplicados: totDup },
+    stats: { linhasLidas: linhas.filter((l) => !l.semCabecalho).length, caminhoes: caminhoesSet.size, itens: totItens, pecas: totPecas, moveisUnicos: moveis.size, invalidos: totInvalid, duplicados: totDup },
     moveis: [...moveis].sort(),
     avisos,
   };
